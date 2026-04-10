@@ -1034,11 +1034,11 @@ function renderResumen(){
   });
   const fmtVarDia=v=>(v>=0?'+':'')+(v*100).toFixed(2)+'%';
   const mkTopRow=(p,color,emoji)=>p
-    ?`<div>
-        <div style="font-size:14px;font-weight:600;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${emoji} ${p['Nombre']||p['Ticker']}</div>
-        <div style="font-size:22px;font-weight:600;letter-spacing:-0.03em;line-height:1;color:${color};margin-top:4px">${fmtVarDia(p._varDia)}</div>
+    ?`<div style="flex:1;min-width:0">
+        <div style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;font-family:'DM Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${emoji} ${p['Nombre']||p['Ticker']}</div>
+        <div style="font-size:22px;font-weight:600;letter-spacing:-0.03em;line-height:1;color:${color};margin-top:5px">${fmtVarDia(p._varDia)}</div>
       </div>`
-    :`<div style="font-size:12px;color:var(--muted)">—</div>`;
+    :`<div style="flex:1;font-size:12px;color:var(--muted)">—</div>`;
   const topGHTML=mkTopRow(topG,'var(--green)','🏆');
   const topLHTML=mkTopRow(topL,'var(--red)','📉');
 
@@ -1046,12 +1046,10 @@ function renderResumen(){
     <div class="metric-card"><div class="metric-label">${totalLabel}</div><div class="metric-value metric-value-blur" style="color:${currColor}">${fmtTotal}</div><div class="metric-sub">${tcLabel}</div></div>
     <div class="metric-card"><div class="metric-label">Yield Diario</div><div class="metric-value ${yieldDaily>=0?'pos':'neg'}">${yieldDaily>=0?'+':''}${(yieldDaily*100).toFixed(2)}% <span class="blur-val" style="font-size:13px;font-weight:400">(${fmtGain(dailyGain)})</span></div><div class="metric-sub">variación del día ${isUSD?'en USD':'en ARS'}</div></div>
     <div class="metric-card"><div class="metric-label">Yield Total</div><div class="metric-value ${yieldTotal>=0?'pos':'neg'}">${yieldTotal>=0?'+':''}${(yieldTotal*100).toFixed(1)}% <span class="blur-val" style="font-size:13px;font-weight:400">(${fmtGain(totalGain)})</span></div><div class="metric-sub">retorno ${isUSD?'en USD':'en ARS'}</div></div>
-    <div class="metric-card" style="display:flex;flex-direction:column;justify-content:space-between">
-      <div class="metric-label" style="margin-bottom:10px">Mejor / Peor <span style="font-size:10px;color:var(--muted2);margin-left:4px">${isUSD?'USD':'ARS'} · día</span></div>
-      <div style="display:flex;flex-direction:column;gap:10px;flex:1;justify-content:center">
-        ${topGHTML}
-        ${topLHTML}
-      </div>
+    <div class="metric-card" style="display:flex;gap:0">
+      ${topGHTML}
+      <div style="width:1px;background:var(--border);margin:0 16px;flex-shrink:0"></div>
+      ${topLHTML}
     </div>`;
 
   renderCharts();
