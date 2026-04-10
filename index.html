@@ -61,9 +61,12 @@
   .layout { transition: grid-template-columns 0.2s ease; }
   .layout.sidebar-collapsed { grid-template-columns: 0 1fr; }
   .layout.sidebar-collapsed .sidebar { min-width: 0; overflow: hidden; padding: 0; border: none; }
-  .sidebar-toggle { background: transparent; border: 1px solid var(--border2); color: var(--muted); cursor: pointer; font-size: 13px; padding: 5px 8px; border-radius: var(--radius-sm); transition: all 0.15s; line-height: 1; margin-right: 8px; vertical-align: middle; position: relative; top: -2px; display: inline-flex; align-items: center; }
+  .sidebar-toggle { background: transparent; border: 1px solid var(--border2); color: var(--muted); cursor: pointer; font-size: 13px; padding: 5px 8px; border-radius: var(--radius-sm); transition: all 0.15s; line-height: 1; display: inline-flex; align-items: center; flex-shrink: 0; }
   .sidebar-toggle:hover { color: var(--text); border-color: var(--accent); }
-  .logo { padding: 0 24px 24px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+  .logo { padding: 0 24px 24px; border-bottom: 1px solid var(--border); margin-bottom: 12px; display: flex; align-items: flex-start; justify-content: space-between; }
+  .sidebar-reopen { display: none; position: fixed; left: 0; top: 50%; transform: translateY(-50%); z-index: 100; background: var(--bg2); border: 1px solid var(--border); border-left: none; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; color: var(--muted); cursor: pointer; padding: 10px 7px; font-size: 14px; transition: all 0.15s; line-height: 1; }
+  .sidebar-reopen:hover { color: var(--text); border-color: var(--accent); }
+  .layout.sidebar-collapsed .sidebar-reopen { display: flex; align-items: center; }
   .logo-text { font-size: 15px; font-weight: 600; letter-spacing: -0.02em; }
   .logo-sub { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 2px; }
   .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 24px; cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 500; transition: all 0.15s; border-left: 2px solid transparent; user-select: none; }
@@ -319,7 +322,11 @@
 <div id="app">
 <div class="layout">
   <aside class="sidebar">
-    <div class="logo"><div class="logo-text">FinPerso</div><div class="logo-sub" id="logo-date"></div></div>
+    <div class="logo">
+      <div><div class="logo-text">FinPerso</div><div class="logo-sub" id="logo-date"></div></div>
+      <button class="sidebar-toggle" id="sidebar-toggle-btn" onclick="toggleSidebar()" title="Ocultar menú">☰</button>
+    </div>
+    <button class="sidebar-reopen" onclick="toggleSidebar()" title="Mostrar menú">›</button>
     <div class="nav-item active" onclick="showSection('resumen',this)"><span class="nav-icon">◈</span> Resumen</div>
     <div class="nav-item" onclick="showSection('portfolio',this)"><span class="nav-icon">◉</span> Posiciones</div>
     <div class="nav-item" onclick="showSection('operaciones',this)"><span class="nav-icon">◫</span> Operaciones</div>
@@ -373,7 +380,7 @@
     <div class="pull-indicator" id="pull-indicator">↓ Soltar para actualizar</div>
     <div class="page-header">
       <div>
-        <button class="sidebar-toggle" id="sidebar-toggle-btn" onclick="toggleSidebar()" title="Ocultar/mostrar menú">☰</button><span class="page-title" id="page-title">Resumen</span>
+        <span class="page-title" id="page-title">Resumen</span>
         <span class="page-title-gain" id="page-title-gain"></span>
         <button id="eye-btn" onclick="toggleNumbers()" title="Ocultar números" style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:5px 9px;font-size:14px;color:var(--muted);cursor:pointer;line-height:1;margin-left:10px;transition:all .15s;display:inline-flex;align-items:center;vertical-align:middle;position:relative;top:-2px">👁</button>
         <div class="last-updated" id="last-updated"></div>
@@ -1485,7 +1492,7 @@ function renderHeatmap(){
 
 // ── NAV ──
 const titles={resumen:'Resumen',portfolio:'Posiciones',operaciones:'Operaciones',efectivo:'Efectivo'};
-function toggleSidebar(){const layout=document.querySelector('.layout');const collapsed=layout.classList.toggle('sidebar-collapsed');localStorage.setItem('sidebarCollapsed',collapsed?'1':'0');document.getElementById('sidebar-toggle-btn').textContent=collapsed?'☰':'☰';}
+function toggleSidebar(){const layout=document.querySelector('.layout');const collapsed=layout.classList.toggle('sidebar-collapsed');localStorage.setItem('sidebarCollapsed',collapsed?'1':'0');}
 (function(){if(localStorage.getItem('sidebarCollapsed')==='1'){document.querySelector('.layout').classList.add('sidebar-collapsed');}})();
 function showSection(name,el){document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));document.getElementById('sec-'+name).classList.add('active');el.classList.add('active');document.getElementById('page-title').textContent=titles[name];document.getElementById('page-title-gain').textContent=name==='resumen'?document.getElementById('page-title-gain').textContent:'';}
 
