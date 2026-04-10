@@ -323,7 +323,7 @@
     <div class="nav-item active" onclick="showSection('resumen',this)"><span class="nav-icon">◈</span> Resumen</div>
     <div class="nav-item" onclick="showSection('portfolio',this)"><span class="nav-icon">◉</span> Posiciones</div>
     <div class="nav-item" onclick="showSection('operaciones',this)"><span class="nav-icon">◫</span> Operaciones</div>
-    <div class="nav-item" onclick="showSection('ia',this)"><span class="nav-icon">◎</span> Asistente IA</div>
+    <div class="nav-item" onclick="showSection('efectivo',this)"><span class="nav-icon">◎</span> Efectivo</div>
     <div class="sidebar-footer">
       <div class="cash-widget">
         <div class="cash-title-row">
@@ -482,13 +482,19 @@
       </div>
     </div>
 
-    <div id="sec-ia" class="section">
-      <div class="ia-key-row"><input type="password" id="ia-key-input" placeholder="API key de Anthropic (opcional)" /><button class="ia-key-btn" onclick="guardarApiKey()">Guardar key</button></div>
-      <div class="ia-notice">La API key se guarda solo en este navegador.</div>
-      <div class="suggestions" id="suggestions"></div>
-      <div class="chat-wrap">
-        <div class="chat-msgs" id="chat-msgs"><div class="msg-ai">Hola. Cargá tu API key arriba para habilitar el análisis completo, o preguntame algo igual.</div></div>
-        <div class="chat-footer"><input type="text" id="chat-input" placeholder="Preguntá sobre tu portfolio…" onkeydown="if(event.key==='Enter')sendChat()" /><button class="btn" id="chat-btn" onclick="sendChat()">Enviar</button></div>
+    <div id="sec-efectivo" class="section">
+      <div id="efectivo-loading" class="loading" style="display:none"><div class="spinner"></div>Cargando movimientos…</div>
+      <div id="efectivo-content">
+        <div class="table-card">
+          <div class="table-header-row">
+            <span class="table-title">Movimientos de efectivo</span>
+            <div class="table-controls">
+              <span id="eft-count" style="font-size:11px;color:var(--muted)"></span>
+              <button class="table-ctrl-btn" onclick="openNuevoEfectivo()">+ Nuevo</button>
+            </div>
+          </div>
+          <div class="table-scroll"><table><thead><tr id="eft-thead"></tr></thead><tbody id="tbl-eft"></tbody></table></div>
+        </div>
       </div>
     </div>
   </main>
@@ -501,7 +507,7 @@
     <div class="modal-header"><span class="modal-title">Nueva Operación</span><button class="modal-close" onclick="closeQuickOp()">✕</button></div>
     <div class="form-grid">
       <div class="form-group"><label class="form-label">Fecha</label><input type="date" class="form-input" id="qop-fecha" /></div>
-      <div class="form-group"><label class="form-label">Orden</label><select class="form-select" id="qop-orden" onchange="toggleQuickFields()"><option value="">Seleccionar…</option><option value="Compra">Compra</option><option value="Venta">Venta</option><option value="Depósito">Depósito</option><option value="Extracción/Gasto">Extracción / Gasto</option></select></div>
+      <div class="form-group"><label class="form-label">Orden</label><select class="form-select" id="qop-orden" onchange="toggleQuickFields()"><option value="">Seleccionar…</option><option value="Compra">Compra</option><option value="Venta">Venta</option></select></div>
       <div class="form-group" id="qop-ticker-group"><label class="form-label">Ticker</label><input type="text" class="form-input" id="qop-ticker" placeholder="Ej: MELI" autocapitalize="characters" list="ticker-list" oninput="onQuickTickerChange()" onchange="onQuickTickerChange()" /><datalist id="ticker-list"></datalist></div>
       <div class="form-group" id="qop-nombre-group"><label class="form-label">Nombre</label><input type="text" class="form-input" id="qop-nombre" placeholder="Ej: MercadoLibre" /></div>
       <div class="form-group" id="qop-tipo-group"><label class="form-label">Tipo</label><select class="form-select" id="qop-tipo"><option value="">Seleccionar…</option><option value="Equity">Equity</option><option value="Bonos">Bonos</option><option value="Crypto">Crypto</option><option value="Cash">Cash</option><option value="Agro">Agro</option></select></div>
@@ -557,6 +563,40 @@
   </div>
 </div>
 
+<!-- ── MODAL: NUEVO MOVIMIENTO DE EFECTIVO ── -->
+<div class="mini-overlay" id="eft-overlay" onclick="if(event.target===this)closeEfectivo()">
+  <div class="mini-sheet" style="max-width:360px">
+    <div class="mini-title">Nuevo movimiento</div>
+    <div class="mini-error" id="eft-error" style="display:none"></div>
+    <div class="form-grid" style="margin-top:12px">
+      <div class="form-group"><label class="form-label">Fecha</label><input type="date" class="form-input" id="eft-fecha" /></div>
+      <div class="form-group"><label class="form-label">Tipo</label>
+        <select class="form-select" id="eft-tipo">
+          <option value="Depósito">Depósito</option>
+          <option value="Extracción">Extracción</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Moneda</label>
+        <select class="form-select" id="eft-moneda">
+          <option value="ARS">ARS</option>
+          <option value="USD">USD</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Monto</label>
+        <input type="number" inputmode="decimal" class="form-input" id="eft-monto" placeholder="0" min="0" step="any" />
+      </div>
+      <div class="form-group full"><label class="form-label">Nota (opcional)</label>
+        <input type="text" class="form-input" id="eft-nota" placeholder="Ej: transferencia bancaria" />
+      </div>
+    </div>
+    <div class="form-success" id="eft-success" style="display:none"></div>
+    <div class="mini-btns" style="margin-top:16px">
+      <button class="mini-btn mini-btn-cancel" onclick="closeEfectivo()">Cancelar</button>
+      <button class="mini-btn mini-btn-confirm" id="eft-submit" onclick="guardarEfectivo()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── NUM INPUT FORMAT ──
 function fmtInputNum(el){ /* no-op, mantenido por compatibilidad */ }
@@ -564,7 +604,7 @@ function getRawNum(el){
   return parseFloat(el.value) || 0;
 }
 
-const STORAGE_KEY='portfolio_api_url',STORAGE_APIKEY='portfolio_anthropic_key';
+const STORAGE_KEY='portfolio_api_url';
 // Paleta por tipo de activo
 // Colores coordinados gráfico 1 y 3: vibrantes, más grande=más oscuro
 const TYPE_COLORS={
@@ -584,7 +624,7 @@ function getColorForTicker(ticker, tipo, idxInTipo){
   const i=typeof idxInTipo==='number'?idxInTipo:0;
   return palette[Math.min(i, palette.length-1)];
 }
-let API_URL='',portfolio=[],operaciones=[],historial=[],mepVal=0,cclVal=0;
+let API_URL='',portfolio=[],operaciones=[],historial=[],efectivo=[],mepVal=0,cclVal=0;
 let compChart=null,tipoChart=null,evoChart=null;
 let activeFilter='Todos';
 
@@ -608,8 +648,6 @@ let portfolioSort={key:null,asc:true},opsSort={key:null,asc:true};
 function init(){
   const s=localStorage.getItem(STORAGE_KEY);
   if(s){API_URL=s;mostrarApp();}else document.getElementById('setup-screen').style.display='flex';
-  const k=localStorage.getItem(STORAGE_APIKEY);
-  if(k)document.getElementById('ia-key-input').value=k;
   // Load col prefs
   try{const p=JSON.parse(localStorage.getItem('fp_pcols')||'{}');
     if(p._order)reorderCols(portfolioCols,p._order);
@@ -639,7 +677,6 @@ function guardarConfig(){
   localStorage.setItem(STORAGE_KEY,url);API_URL=url;err.style.display='none';mostrarApp();
 }
 function resetConfig(){if(!confirm('¿Cambiar conexión?'))return;localStorage.removeItem(STORAGE_KEY);location.reload();}
-function guardarApiKey(){const k=document.getElementById('ia-key-input').value.trim();if(k){localStorage.setItem(STORAGE_APIKEY,k);alert('Guardada.');}else{localStorage.removeItem(STORAGE_APIKEY);alert('Eliminada.');}}
 
 function toggleTheme(){
   const curr=document.documentElement.getAttribute('data-theme')||'dark';
@@ -704,12 +741,14 @@ function showError(m){const b=document.getElementById('error-banner');b.textCont
 async function cargarDatos(){
   ['resumen','portfolio','operaciones'].forEach(s=>{document.getElementById(s+'-loading').style.display='block';document.getElementById(s+'-content').style.display='none';});
   try{
-    const[inv,ops,tc,hist]=await Promise.allSettled([fetchSheet('Portfolio'),fetchSheet('Operaciones'),fetchSheet('Valores'),fetchSheet('Historial')]);
+    const[inv,ops,tc,hist,eft]=await Promise.allSettled([fetchSheet('Portfolio'),fetchSheet('Operaciones'),fetchSheet('Valores'),fetchSheet('Historial'),fetchSheet('Efectivo')]);
     if(tc.status==='fulfilled')tc.value.forEach(row=>{const c=(row['Clave']||'').toLowerCase(),v=row['Valor'],n=parseFloat(v)||0;if(c.includes('mep')&&n>0){mepVal=n;document.getElementById('mep-val').textContent='$'+Math.round(n).toLocaleString('es-AR');}if(c.includes('ccl')&&n>0){cclVal=n;document.getElementById('ccl-val').textContent='$'+Math.round(n).toLocaleString('es-AR');}if(c.includes('fecha update')&&v)document.getElementById('tc-updated').textContent=v;if(c.includes('email')&&v){document.getElementById('email-input').value=v;localStorage.setItem('fp_email',v);}});
     if(hist.status==='fulfilled')historial=hist.value.filter(r=>r['Fecha']&&r['Total USD']);
     if(inv.status==='fulfilled'){portfolio=inv.value.filter(r=>r['Ticker']&&r['Ticker']!=='');renderPortfolio();renderResumen();renderCashWidget();renderFilterBar();}else showError('Portfolio: '+inv.reason.message);
     if(ops.status==='fulfilled'){operaciones=ops.value.filter(r=>r['Fecha']&&r['Fecha']!=='');renderOperaciones();}else showError('Operaciones: '+ops.reason.message);
-    actualizarSugerencias();populateTickerList();
+    efectivo=eft.status==='fulfilled'?eft.value.filter(r=>r['Fecha']&&r['Fecha']!==''):[];
+    renderEfectivo();
+    populateTickerList();
     document.getElementById('last-updated').textContent='Actualizado: '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
   }catch(e){showError('Error: '+e.message);}
 }
@@ -756,7 +795,7 @@ async function confirmarInlineCash(moneda){
   const t=moneda.toLowerCase();
   const nominales=parseFloat(document.getElementById('cash-'+t+'-input').value);
   const errEl=document.getElementById('cash-'+t+'-err');
-  if(isNaN(nominales)||nominales<0){errEl.textContent='Valor inválido';errEl.style.display='block';return;}
+  if(isNaN(nominales)){errEl.textContent='Valor inválido';errEl.style.display='block';return;}
   portfolio.forEach(p=>{if(p['Ticker']===moneda)p['Nominales']=nominales;});
   renderCashWidget();renderResumen();
   document.getElementById('cash-'+t).style.display='';
@@ -1439,33 +1478,81 @@ function renderHeatmap(){
 }
 
 // ── NAV ──
-const titles={resumen:'Resumen',portfolio:'Posiciones',operaciones:'Operaciones',ia:'Asistente IA'};
+const titles={resumen:'Resumen',portfolio:'Posiciones',operaciones:'Operaciones',efectivo:'Efectivo'};
 function toggleSidebar(){const layout=document.querySelector('.layout');const collapsed=layout.classList.toggle('sidebar-collapsed');localStorage.setItem('sidebarCollapsed',collapsed?'1':'0');document.getElementById('sidebar-toggle-btn').textContent=collapsed?'☰':'☰';}
 (function(){if(localStorage.getItem('sidebarCollapsed')==='1'){document.querySelector('.layout').classList.add('sidebar-collapsed');}})();
 function showSection(name,el){document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));document.getElementById('sec-'+name).classList.add('active');el.classList.add('active');document.getElementById('page-title').textContent=titles[name];document.getElementById('page-title-gain').textContent=name==='resumen'?document.getElementById('page-title-gain').textContent:'';}
 
 // ── SWIPE NAV (mobile) — desactivado ──
 
-// ── CHAT ──
-function actualizarSugerencias(){const t=portfolio.filter(p=>p['Tipo']!=='Cash').map(p=>p['Ticker']).slice(0,3).join(', ');const s=['¿Qué activos están en positivo?','¿Cuánto perdí en total?','¿Qué % tengo en cash?','¿Cuál es mi posición más grande?',`Analizame ${t}`,'Resumen general'];document.getElementById('suggestions').innerHTML=s.map(x=>`<span class="suggestion" onclick="fillChat('${x}')">${x}</span>`).join('');}
-function fillChat(t){document.getElementById('chat-input').value=t;document.getElementById('chat-input').focus();}
+// ── EFECTIVO ──
+function renderEfectivo(){
+  const thead=document.getElementById('eft-thead');
+  const tbody=document.getElementById('tbl-eft');
+  if(!thead||!tbody)return;
+  thead.innerHTML='<th>Fecha</th><th>Tipo</th><th>Moneda</th><th>Monto</th><th>Nota</th><th></th>';
+  tbody.innerHTML='';
+  document.getElementById('eft-count').textContent=efectivo.length+' movimiento'+(efectivo.length===1?'':'s');
+  if(efectivo.length===0){
+    tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Sin movimientos registrados. Usá "+ Nuevo" para agregar un depósito o extracción.</td></tr>';
+    return;
+  }
+  [...efectivo].reverse().forEach(r=>{
+    const fila=r['_fila']||0;
+    const esDeposito=r['Tipo']==='Depósito';
+    const tipoStyle=esDeposito?'background:#1a2a3d;color:#60a5fa':'background:#3d2e00;color:#fbbf24';
+    const monto=toN(r['Monto']);
+    const signo=esDeposito?'+':'-';
+    const monedaStr=r['Moneda']==='USD'?'U$S ':'$';
+    const montoFmt=monedaStr+monto.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    tbody.innerHTML+=`<tr>
+      <td class="mono" style="color:var(--muted)">${r['Fecha']||''}</td>
+      <td><span class="badge" style="${tipoStyle}">${r['Tipo']||''}</span></td>
+      <td><span class="badge">${r['Moneda']||''}</span></td>
+      <td class="mono" style="color:${esDeposito?'var(--green)':'var(--red)'}">${signo}${montoFmt}</td>
+      <td style="color:var(--muted);font-size:12px">${r['Nota']||''}</td>
+      <td><div class="row-actions"><button class="row-btn del" onclick="borrarEfectivo(${fila})" title="Borrar">✕</button></div></td>
+    </tr>`;
+  });
+}
 
-async function sendChat(){
-  const input=document.getElementById('chat-input'),msgs=document.getElementById('chat-msgs'),btn=document.getElementById('chat-btn'),text=input.value.trim();
-  if(!text)return;input.value='';btn.disabled=true;
-  msgs.innerHTML+=`<div class="msg-user">${text}</div>`;
-  const th=document.createElement('div');th.className='msg-ai msg-thinking';th.textContent='Analizando…';msgs.appendChild(th);msgs.scrollTop=msgs.scrollHeight;
-  const apiKey=localStorage.getItem(STORAGE_APIKEY);
-  if(!apiKey){th.textContent='Necesitás cargar tu API key arriba.';th.classList.remove('msg-thinking');btn.disabled=false;return;}
-  const tc=mepVal>0?mepVal:1423;
+function openNuevoEfectivo(){
+  const d=new Date();
+  document.getElementById('eft-fecha').value=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  document.getElementById('eft-tipo').value='Depósito';
+  document.getElementById('eft-moneda').value='ARS';
+  document.getElementById('eft-monto').value='';
+  document.getElementById('eft-nota').value='';
+  document.getElementById('eft-error').style.display='none';
+  document.getElementById('eft-success').style.display='none';
+  document.getElementById('eft-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('eft-monto').focus(),100);
+}
+
+function closeEfectivo(){document.getElementById('eft-overlay').classList.remove('open');}
+
+async function guardarEfectivo(){
+  const btn=document.getElementById('eft-submit'),err=document.getElementById('eft-error'),suc=document.getElementById('eft-success');
+  err.style.display='none';suc.style.display='none';
+  const fecha=document.getElementById('eft-fecha').value,tipo=document.getElementById('eft-tipo').value;
+  const moneda=document.getElementById('eft-moneda').value,monto=parseFloat(document.getElementById('eft-monto').value);
+  const nota=document.getElementById('eft-nota').value.trim();
+  if(!fecha||isNaN(monto)||monto<=0){err.textContent='Completá todos los campos obligatorios.';err.style.display='block';return;}
+  btn.disabled=true;btn.textContent='Guardando…';
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,
-        system:`Sos un asistente financiero personal para un inversor argentino.\nMEP: $${Math.round(tc)} | CCL: $${Math.round(cclVal)}\n\nPORTFOLIO:\n${JSON.stringify(portfolio.map(p=>({ticker:p['Ticker'],nombre:p['Nombre'],tipo:p['Tipo'],nominales:toN(p['Nominales']),precio:toN(p['Precio']),ppc:toN(p['PPC']),totalUSD:toN(p['Total USD']),rend:toN(p['Rend. USD']),dpt:toN(p['DPT'])})))}\n\nÚLTIMAS OPERACIONES:\n${JSON.stringify(operaciones.slice(-15).reverse().map(o=>({fecha:o['Fecha'],orden:o['Orden'],ticker:o['Ticker'],nominales:toN(o['Nominales']),precio:toN(o['Precio']),totalARS:toN(o['Total ARS'])})))}\n\nRespondé en español, conciso, sin markdown con asteriscos. Texto plano con saltos de línea.`,
-        messages:[{role:'user',content:text}]})});
-    const data=await res.json();th.textContent=data.content?.[0]?.text||'No pude procesar la respuesta.';
-  }catch(e){th.textContent='Error al conectar con la IA.';}
-  th.classList.remove('msg-thinking');msgs.scrollTop=msgs.scrollHeight;btn.disabled=false;
+    const res=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action:'addEfectivo',fecha,tipo,moneda,monto,nota})});
+    const data=await res.json();
+    if(data.error){err.textContent='Error: '+data.error;err.style.display='block';}
+    else{suc.textContent='✓ '+(data.mensaje||'Guardado');suc.style.display='block';setTimeout(()=>{closeEfectivo();cargarDatos();},800);}
+  }catch(e){err.textContent='Error: '+e.message;err.style.display='block';}
+  btn.disabled=false;btn.textContent='Guardar';
+}
+
+function borrarEfectivo(fila){
+  if(!confirm('¿Eliminar este movimiento? Esta acción actualiza el saldo de efectivo.'))return;
+  fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action:'deleteEfectivo',fila:fila})})
+    .then(r=>r.json()).then(data=>{if(data.error)alert('Error: '+data.error);else setTimeout(()=>cargarDatos(),500);})
+    .catch(e=>alert('Error: '+e.message));
 }
 
 // ── QUICK OP ──
@@ -1490,14 +1577,14 @@ function closeQuickOp(){
   document.getElementById('qop-total-group').style.display='flex';
   document.getElementById('qop-disponible').style.display='none';
 }
-function isQuickCash(){return['Depósito','Extracción/Gasto'].includes(document.getElementById('qop-orden').value);}
+function isQuickCash(){return false;}
 function toggleQuickFields(){
-  const c=isQuickCash();
-  document.getElementById('qop-ticker-group').style.display=c?'none':'flex';
-  document.getElementById('qop-nombre-group').style.display=c?'none':'flex';
-  document.getElementById('qop-tipo-group').style.display=c?'none':'flex';
-  document.getElementById('qop-precio-group').style.display=c?'none':'flex';
-  document.getElementById('qop-total-group').style.display=c?'none':'flex';
+  const c=false;
+  document.getElementById('qop-ticker-group').style.display='flex';
+  document.getElementById('qop-nombre-group').style.display='flex';
+  document.getElementById('qop-tipo-group').style.display='flex';
+  document.getElementById('qop-precio-group').style.display='flex';
+  document.getElementById('qop-total-group').style.display='flex';
   document.getElementById('qop-disponible').style.display='none';
   if(c){
     document.getElementById('qop-tipo').value='Cash';
