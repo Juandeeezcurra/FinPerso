@@ -79,14 +79,15 @@
   .tc-label, .cash-label { font-size: 11px; color: var(--muted); }
   .tc-val { font-size: 13px; font-weight: 500; font-family: 'DM Mono', monospace; color: var(--amber); }
   .cash-val { font-size: 13px; font-weight: 500; font-family: 'DM Mono', monospace; color: var(--green); }
-  .cash-edit-btn { background: transparent; border: none; cursor: pointer; color: var(--muted); opacity: 0.35; padding: 2px 4px; font-size: 11px; border-radius: 3px; transition: opacity .15s, color .15s; line-height: 1; }
-  .cash-edit-btn:hover { opacity: 1; color: var(--accent); }
-  .cash-row:hover .cash-edit-btn { opacity: 0.6; }
-  .cash-input-wrap { display: none; flex: 1; align-items: center; gap: 4px; justify-content: flex-end; }
-  .cash-input-wrap input { width: 72px; background: var(--bg3); border: 1px solid var(--accent); border-radius: 4px; padding: 3px 6px; font-size: 11px; color: var(--fg); font-family: 'DM Mono', monospace; outline: none; -moz-appearance: textfield; }
-  .cash-input-wrap input::-webkit-outer-spin-button, .cash-input-wrap input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-  .cash-confirm-btn { background: var(--accent); color: #fff; border: none; border-radius: 4px; width: 22px; height: 22px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .cash-cancel-btn { background: transparent; color: var(--muted); border: 1px solid var(--border2); border-radius: 4px; width: 22px; height: 22px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .cash-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .cash-title-row .cash-title { margin-bottom: 0; }
+  .cash-pencil-btn { background: transparent; border: none; cursor: pointer; color: var(--muted); opacity: 0.4; padding: 2px 4px; font-size: 12px; border-radius: 3px; transition: opacity 0.15s, color 0.15s; line-height: 1; }
+  .cash-pencil-btn:hover { opacity: 1; color: var(--accent); }
+  .cash-val-wrap { display: flex; align-items: center; flex: 1; justify-content: flex-end; }
+  .cash-input-inline { width: 80px; background: transparent; border: none; border-bottom: 1px solid var(--accent); color: var(--green); font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; outline: none; padding: 0; text-align: right; -moz-appearance: textfield; }
+  .cash-input-inline::-webkit-outer-spin-button, .cash-input-inline::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .cash-confirm-btn { background: transparent; color: var(--muted); border: 1px solid var(--border2); border-radius: 4px; width: 22px; height: 22px; font-size: 12px; cursor: pointer; display: none; align-items: center; justify-content: center; flex-shrink: 0; margin-left: 6px; transition: all 0.15s; }
+  .cash-confirm-btn:hover { color: var(--green); border-color: var(--green); background: rgba(52,211,153,0.1); }
   .tc-updated { font-size: 10px; color: var(--muted2); margin-top: 6px; }
   .sidebar-actions { display: flex; gap: 6px; }
   .reset-btn, .theme-btn { flex: 1; background: transparent; border: 1px solid var(--border); color: var(--muted2); border-radius: var(--radius-sm); padding: 6px; font-size: 11px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; text-align: center; }
@@ -319,30 +320,29 @@
     <div class="nav-item" onclick="showSection('ia',this)"><span class="nav-icon">◎</span> Asistente IA</div>
     <div class="sidebar-footer">
       <div class="cash-widget">
-        <div class="cash-title">Saldo cash</div>
+        <div class="cash-title-row">
+          <span class="cash-title">Saldo cash</span>
+          <button class="cash-pencil-btn" onclick="activarEdicionCash()" title="Editar saldos">✎</button>
+        </div>
         <div class="cash-row" id="cash-ars-row">
           <span class="cash-label">ARS</span>
-          <span class="cash-val" id="cash-ars">—</span>
-          <button class="cash-edit-btn" onclick="inlineCashEdit('ARS')" title="Editar saldo ARS">✎</button>
-          <div class="cash-input-wrap" id="cash-ars-edit">
-            <input id="cash-ars-input" type="number" placeholder="0"
-              onkeydown="if(event.key==='Enter')confirmarInlineCash('ARS');if(event.key==='Escape')cancelarInlineCash('ARS')" />
-            <button class="cash-confirm-btn" onclick="confirmarInlineCash('ARS')">✓</button>
-            <button class="cash-cancel-btn" onclick="cancelarInlineCash('ARS')">✕</button>
+          <div class="cash-val-wrap">
+            <span class="cash-val" id="cash-ars">—</span>
+            <input class="cash-input-inline" id="cash-ars-input" type="number" placeholder="0" style="display:none"
+              onkeydown="if(event.key==='Enter')confirmarInlineCash('ARS');if(event.key==='Escape')cancelarEdicionCash()" />
           </div>
-          <div id="cash-ars-err" style="font-size:10px;color:var(--red);display:none"></div>
+          <button class="cash-confirm-btn" id="cash-ars-confirm" onclick="confirmarInlineCash('ARS')">✓</button>
+          <div id="cash-ars-err" style="font-size:10px;color:var(--red);display:none;width:100%"></div>
         </div>
         <div class="cash-row" id="cash-usd-row">
           <span class="cash-label">USD</span>
-          <span class="cash-val" id="cash-usd">—</span>
-          <button class="cash-edit-btn" onclick="inlineCashEdit('USD')" title="Editar saldo USD">✎</button>
-          <div class="cash-input-wrap" id="cash-usd-edit">
-            <input id="cash-usd-input" type="number" placeholder="0"
-              onkeydown="if(event.key==='Enter')confirmarInlineCash('USD');if(event.key==='Escape')cancelarInlineCash('USD')" />
-            <button class="cash-confirm-btn" onclick="confirmarInlineCash('USD')">✓</button>
-            <button class="cash-cancel-btn" onclick="cancelarInlineCash('USD')">✕</button>
+          <div class="cash-val-wrap">
+            <span class="cash-val" id="cash-usd">—</span>
+            <input class="cash-input-inline" id="cash-usd-input" type="number" placeholder="0" style="display:none"
+              onkeydown="if(event.key==='Enter')confirmarInlineCash('USD');if(event.key==='Escape')cancelarEdicionCash()" />
           </div>
-          <div id="cash-usd-err" style="font-size:10px;color:var(--red);display:none"></div>
+          <button class="cash-confirm-btn" id="cash-usd-confirm" onclick="confirmarInlineCash('USD')">✓</button>
+          <div id="cash-usd-err" style="font-size:10px;color:var(--red);display:none;width:100%"></div>
         </div>
       </div>
       <div class="tc-widget">
@@ -722,25 +722,28 @@ function renderCashWidget(){
   document.getElementById('cash-usd').textContent=usd?fmtUSD(toN(usd['Nominales'])):'—';
 }
 
-function inlineCashEdit(moneda){
-  const t=moneda.toLowerCase();
-  const other=moneda==='ARS'?'usd':'ars';
-  // Cerrar el otro si está abierto
-  document.getElementById('cash-'+other+'-edit').style.display='none';
-  document.getElementById('cash-'+other+'-err').style.display='none';
-  // Abrir este
-  const pos=portfolio.find(p=>p['Ticker']===moneda);
-  const val=pos?toN(pos['Nominales']):0;
-  document.getElementById('cash-'+t+'-input').value=val||'';
-  document.getElementById('cash-'+t+'-edit').style.display='flex';
-  document.getElementById('cash-'+t+'-err').style.display='none';
-  setTimeout(()=>document.getElementById('cash-'+t+'-input').focus(),50);
+function activarEdicionCash(){
+  ['ARS','USD'].forEach(moneda=>{
+    const t=moneda.toLowerCase();
+    const pos=portfolio.find(p=>p['Ticker']===moneda);
+    const val=pos?toN(pos['Nominales']):0;
+    document.getElementById('cash-'+t+'-input').value=val||'';
+    document.getElementById('cash-'+t).style.display='none';
+    document.getElementById('cash-'+t+'-input').style.display='block';
+    document.getElementById('cash-'+t+'-confirm').style.display='flex';
+    document.getElementById('cash-'+t+'-err').style.display='none';
+  });
+  setTimeout(()=>document.getElementById('cash-ars-input').focus(),50);
 }
 
-function cancelarInlineCash(moneda){
-  const t=moneda.toLowerCase();
-  document.getElementById('cash-'+t+'-edit').style.display='none';
-  document.getElementById('cash-'+t+'-err').style.display='none';
+function cancelarEdicionCash(){
+  ['ARS','USD'].forEach(moneda=>{
+    const t=moneda.toLowerCase();
+    document.getElementById('cash-'+t).style.display='';
+    document.getElementById('cash-'+t+'-input').style.display='none';
+    document.getElementById('cash-'+t+'-confirm').style.display='none';
+    document.getElementById('cash-'+t+'-err').style.display='none';
+  });
 }
 
 async function confirmarInlineCash(moneda){
@@ -750,13 +753,15 @@ async function confirmarInlineCash(moneda){
   if(isNaN(nominales)||nominales<0){errEl.textContent='Valor inválido';errEl.style.display='block';return;}
   portfolio.forEach(p=>{if(p['Ticker']===moneda)p['Nominales']=nominales;});
   renderCashWidget();renderResumen();
-  document.getElementById('cash-'+t+'-edit').style.display='none';
+  document.getElementById('cash-'+t).style.display='';
+  document.getElementById('cash-'+t+'-input').style.display='none';
+  document.getElementById('cash-'+t+'-confirm').style.display='none';
   try{
     const res=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action:'updateNominalesCash',ticker:moneda,nominales:nominales})});
     const data=await res.json();
-    if(data.error){errEl.textContent=data.error;errEl.style.display='block';document.getElementById('cash-'+t+'-edit').style.display='flex';}
+    if(data.error){errEl.textContent=data.error;errEl.style.display='block';document.getElementById('cash-'+t).style.display='none';document.getElementById('cash-'+t+'-input').style.display='block';document.getElementById('cash-'+t+'-confirm').style.display='flex';}
     else setTimeout(()=>cargarDatos(),1000);
-  }catch(e){errEl.textContent='Error de conexión';errEl.style.display='block';document.getElementById('cash-'+t+'-edit').style.display='flex';}
+  }catch(e){errEl.textContent='Error de conexión';errEl.style.display='block';document.getElementById('cash-'+t).style.display='none';document.getElementById('cash-'+t+'-input').style.display='block';document.getElementById('cash-'+t+'-confirm').style.display='flex';}
 }
 
 // ── COLUMN CONFIG + DRAG & DROP ──
