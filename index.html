@@ -89,6 +89,12 @@
   .cash-confirm-btn { background: transparent; color: var(--muted); border: 1px solid var(--border2); border-radius: 4px; width: 22px; height: 22px; font-size: 12px; cursor: pointer; display: none; align-items: center; justify-content: center; flex-shrink: 0; margin-left: 6px; transition: all 0.15s; }
   .cash-confirm-btn:hover { color: var(--green); border-color: var(--green); background: rgba(52,211,153,0.1); }
   .tc-updated { font-size: 10px; color: var(--muted2); margin-top: 6px; }
+  .email-input-row { display: flex; align-items: center; background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius-sm); overflow: hidden; transition: border-color 0.15s; }
+  .email-input-row:focus-within { border-color: var(--accent); }
+  .email-input-row input { flex: 1; background: transparent; border: none; outline: none; padding: 7px 10px; font-size: 11px; color: var(--text); font-family: 'DM Sans', sans-serif; }
+  .email-input-row input::placeholder { color: var(--muted2); }
+  .email-confirm-btn { background: transparent; color: var(--muted); border: none; border-left: 1px solid var(--border2); padding: 6px 10px; font-size: 13px; cursor: pointer; transition: all 0.15s; flex-shrink: 0; line-height: 1; }
+  .email-confirm-btn:hover { color: var(--green); background: rgba(52,211,153,0.08); }
   .sidebar-actions { display: flex; gap: 6px; }
   .reset-btn, .theme-btn { flex: 1; background: transparent; border: 1px solid var(--border); color: var(--muted2); border-radius: var(--radius-sm); padding: 6px; font-size: 11px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; text-align: center; }
   .reset-btn:hover { color: var(--red); border-color: rgba(248,113,113,0.4); }
@@ -351,13 +357,13 @@
         <div class="tc-row"><span class="tc-label">CCL</span><span class="tc-val" id="ccl-val">—</span></div>
         <div class="tc-updated" id="tc-updated"></div>
       </div>
-      <div class="email-widget" style="margin-bottom:10px">
+      <div class="tc-widget" style="margin-bottom:10px">
         <div class="tc-title">Email reporte diario</div>
-        <div style="display:flex;gap:6px">
-          <input type="email" id="email-input" class="setup-input" style="font-size:11px;padding:7px 10px" placeholder="tu@email.com" />
-          <button class="theme-btn" style="flex:0 0 auto;padding:7px 10px" onclick="guardarEmail()">✓</button>
+        <div class="email-input-row">
+          <input type="email" id="email-input" placeholder="tu@email.com" />
+          <button class="email-confirm-btn" onclick="guardarEmail()">✓</button>
         </div>
-        <div id="email-status" style="font-size:10px;color:var(--muted2);margin-top:4px;display:none"></div>
+        <div id="email-status" style="font-size:10px;color:var(--muted2);margin-top:6px;display:none"></div>
       </div>
       <button class="theme-btn" style="width:100%" onclick="toggleTheme()">◐ Tema</button>
     </div>
