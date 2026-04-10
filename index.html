@@ -339,8 +339,8 @@
     --radius-lg: 14px; --radius-xl: 20px; --radius-full: 9999px;
     --radius: 14px;
     --text-2xs: 10px; --text-xs: 11px; --text-sm: 12px; --text-base: 14px;
-    --text-md: 16px; --text-lg: 20px; --text-xl: 28px; --text-2xl: 36px;
-    --text-3xl: 48px; --text-hero: 56px;
+    --text-md: 15px; --text-lg: 18px; --text-xl: 22px; --text-2xl: 28px;
+    --text-3xl: 38px; --text-hero: 44px;
     --ease: cubic-bezier(0.4, 0, 0.2, 1);
     --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
     --dur-fast: 120ms; --dur-base: 180ms; --dur-slow: 280ms;
@@ -606,10 +606,10 @@
 
   /* ── MAIN ── */
   .main {
-    padding: var(--space-8) var(--space-10);
+    padding: var(--space-6) var(--space-8);
     background: var(--bg);
     min-width: 0;
-    max-width: 1600px;
+    max-width: 1440px;
     margin: 0 auto;
     width: 100%;
   }
@@ -617,7 +617,7 @@
   /* ── PAGE HEADER ── */
   .page-header {
     display: block;
-    margin-bottom: var(--space-8);
+    margin-bottom: var(--space-6);
   }
   .page-header-top {
     display: flex;
@@ -716,7 +716,7 @@
       var(--bg-elevated);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    padding: var(--space-8) var(--space-10);
+    padding: var(--space-6) var(--space-8);
     margin-bottom: var(--space-5);
     overflow: hidden;
     isolation: isolate;
@@ -1368,6 +1368,9 @@
 
 <div id="app">
 <div class="layout">
+  <button class="sidebar-reopen" onclick="toggleSidebar()" title="Mostrar menú" aria-label="Mostrar menú">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </button>
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-head">
       <div class="brand">
@@ -1383,9 +1386,6 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
     </div>
-    <button class="sidebar-reopen" onclick="toggleSidebar()" title="Mostrar menú" aria-label="Mostrar menú">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-    </button>
     <nav class="sidebar-nav">
       <button class="nav-item active" onclick="showSection('resumen',this)">
         <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg></span>
@@ -1816,7 +1816,12 @@ function mostrarApp(){
   if(localStorage.getItem('fp_hide_numbers')==='1'){
     numbersHidden=true;
     document.getElementById('app').classList.add('numbers-hidden');
-    document.getElementById('eye-btn').textContent='🙈';
+    const btn=document.getElementById('eye-btn');
+    if(btn){
+      btn.innerHTML=EYE_OFF_SVG;
+      btn.setAttribute('aria-label','Mostrar números');
+      btn.setAttribute('title','Mostrar números');
+    }
   }
   renderColConfig('ops',opsCols);
 }
@@ -2909,10 +2914,15 @@ enviarQuickOp=async function(){
 
 // ── TOGGLE NUMBERS (ojito) ──
 let numbersHidden=false;
+const EYE_OPEN_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a19.77 19.77 0 0 1 4.22-5.22"/><path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a19.8 19.8 0 0 1-3.17 4.19"/><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
 function toggleNumbers(){
   numbersHidden=!numbersHidden;
   document.getElementById('app').classList.toggle('numbers-hidden',numbersHidden);
-  document.getElementById('eye-btn').textContent=numbersHidden?'🙈':'👁';
+  const btn=document.getElementById('eye-btn');
+  btn.innerHTML=numbersHidden?EYE_OFF_SVG:EYE_OPEN_SVG;
+  btn.setAttribute('aria-label',numbersHidden?'Mostrar números':'Ocultar números');
+  btn.setAttribute('title',numbersHidden?'Mostrar números':'Ocultar números');
   localStorage.setItem('fp_hide_numbers',numbersHidden?'1':'0');
 }
 
