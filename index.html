@@ -1034,7 +1034,7 @@ function renderResumen(){
   });
   const fmtVarDia=v=>(v>=0?'+':'')+(v*100).toFixed(2)+'%';
   const mkTopRow=(p,color,emoji)=>p
-    ?`<div style="flex:1;min-width:0">
+    ?`<div style="flex:1;min-width:0;padding-top:4px">
         <div style="font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;font-family:'DM Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${emoji} ${p['Nombre']||p['Ticker']}</div>
         <div style="font-size:22px;font-weight:600;letter-spacing:-0.03em;line-height:1;color:${color};margin-top:5px">${fmtVarDia(p._varDia)}</div>
       </div>`
@@ -1046,9 +1046,9 @@ function renderResumen(){
     <div class="metric-card"><div class="metric-label">${totalLabel}</div><div class="metric-value metric-value-blur" style="color:${currColor}">${fmtTotal}</div><div class="metric-sub">${tcLabel}</div></div>
     <div class="metric-card"><div class="metric-label">Yield Diario</div><div class="metric-value ${yieldDaily>=0?'pos':'neg'}">${yieldDaily>=0?'+':''}${(yieldDaily*100).toFixed(2)}% <span class="blur-val" style="font-size:13px;font-weight:400">(${fmtGain(dailyGain)})</span></div><div class="metric-sub">variación del día ${isUSD?'en USD':'en ARS'}</div></div>
     <div class="metric-card"><div class="metric-label">Yield Total</div><div class="metric-value ${yieldTotal>=0?'pos':'neg'}">${yieldTotal>=0?'+':''}${(yieldTotal*100).toFixed(1)}% <span class="blur-val" style="font-size:13px;font-weight:400">(${fmtGain(totalGain)})</span></div><div class="metric-sub">retorno ${isUSD?'en USD':'en ARS'}</div></div>
-    <div class="metric-card" style="display:flex;gap:0">
+    <div class="metric-card" style="display:flex;gap:0;align-items:center">
       ${topGHTML}
-      <div style="width:1px;background:var(--border);margin:0 16px;flex-shrink:0"></div>
+      <div style="width:1px;background:var(--border);margin:0 16px;flex-shrink:0;align-self:stretch"></div>
       ${topLHTML}
     </div>`;
 
