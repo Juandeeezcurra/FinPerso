@@ -385,23 +385,15 @@
   .sidebar-reopen:hover { width: 36px; color: var(--text); border-color: var(--accent); }
   .layout.sidebar-collapsed .sidebar-reopen { display: flex; }
 
-  /* Main footer widgets (bottom of page) */
-  .main-footer {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: var(--space-4);
-    padding: var(--space-5) 0;
-    margin-top: var(--space-6);
+  /* Sidebar footer widgets */
+  .sidebar-footer {
+    padding: var(--space-4) var(--space-5) 0;
+    margin-top: auto;
     border-top: 1px solid var(--border);
-  }
-  .footer-theme-wrap {
     display: flex;
-    align-items: center;
-    justify-content: center;
+    flex-direction: column;
+    gap: var(--space-3);
   }
-
-  /* Legacy — keep hidden, moved to main-footer */
-  .sidebar-footer { display: none; }
   .widget {
     background: var(--bg-input);
     border: 1px solid var(--border);
@@ -1205,7 +1197,6 @@
     .metric-card-split { padding: var(--space-4); gap: var(--space-3); }
     .split-half .metric-value { font-size: var(--text-md); }
     .chart-row { grid-template-columns: 1fr; }
-    .main-footer { grid-template-columns: repeat(2, 1fr); }
     .fab { right: var(--space-5); bottom: calc(96px + env(safe-area-inset-bottom, 0px)); width: 56px; height: 56px; }
     .fab svg { width: 22px; height: 22px; }
   }
@@ -1273,7 +1264,49 @@
         <span>Efectivo</span>
       </button>
     </nav>
-    <!-- footer widgets moved to bottom of main -->
+    <div class="sidebar-footer">
+      <div class="cash-widget">
+        <div class="cash-title-row">
+          <span class="cash-title">Saldo cash</span>
+          <button class="cash-pencil-btn" onclick="activarEdicionCash()" title="Editar saldos">✎</button>
+        </div>
+        <div class="cash-row" id="cash-ars-row">
+          <span class="cash-label">ARS</span>
+          <div class="cash-val-wrap">
+            <span class="cash-val" id="cash-ars">—</span>
+            <input class="cash-input-inline" id="cash-ars-input" type="number" placeholder="0" style="display:none"
+              onkeydown="if(event.key==='Enter')confirmarInlineCash('ARS');if(event.key==='Escape')cancelarEdicionCash()" />
+          </div>
+          <button class="cash-confirm-btn" id="cash-ars-confirm" onclick="confirmarInlineCash('ARS')">✓</button>
+          <div id="cash-ars-err" style="font-size:10px;color:var(--red);display:none;width:100%"></div>
+        </div>
+        <div class="cash-row" id="cash-usd-row">
+          <span class="cash-label">USD</span>
+          <div class="cash-val-wrap">
+            <span class="cash-val" id="cash-usd">—</span>
+            <input class="cash-input-inline" id="cash-usd-input" type="number" placeholder="0" style="display:none"
+              onkeydown="if(event.key==='Enter')confirmarInlineCash('USD');if(event.key==='Escape')cancelarEdicionCash()" />
+          </div>
+          <button class="cash-confirm-btn" id="cash-usd-confirm" onclick="confirmarInlineCash('USD')">✓</button>
+          <div id="cash-usd-err" style="font-size:10px;color:var(--red);display:none;width:100%"></div>
+        </div>
+      </div>
+      <div class="tc-widget">
+        <div class="tc-title">Tipo de cambio</div>
+        <div class="tc-row"><span class="tc-label">MEP</span><span class="tc-val" id="mep-val">—</span></div>
+        <div class="tc-row"><span class="tc-label">CCL</span><span class="tc-val" id="ccl-val">—</span></div>
+        <div class="tc-updated" id="tc-updated"></div>
+      </div>
+      <div class="tc-widget" style="margin-bottom:10px">
+        <div class="tc-title">Email reporte diario</div>
+        <div class="email-input-row">
+          <input type="email" id="email-input" placeholder="tu@email.com" />
+          <button class="email-confirm-btn" onclick="guardarEmail()">✓</button>
+        </div>
+        <div id="email-status" style="font-size:10px;color:var(--muted2);margin-top:6px;display:none"></div>
+      </div>
+      <button class="theme-btn" style="width:100%" onclick="toggleTheme()">◐ Tema</button>
+    </div>
   </aside>
 
   <main class="main" id="main-content">
@@ -1420,52 +1453,6 @@
         </div>
       </div>
     </div>
-
-    <footer class="main-footer" id="main-footer">
-      <div class="cash-widget">
-        <div class="cash-title-row">
-          <span class="cash-title">Saldo cash</span>
-          <button class="cash-pencil-btn" onclick="activarEdicionCash()" title="Editar saldos">✎</button>
-        </div>
-        <div class="cash-row" id="cash-ars-row">
-          <span class="cash-label">ARS</span>
-          <div class="cash-val-wrap">
-            <span class="cash-val" id="cash-ars">—</span>
-            <input class="cash-input-inline" id="cash-ars-input" type="number" placeholder="0" style="display:none"
-              onkeydown="if(event.key==='Enter')confirmarInlineCash('ARS');if(event.key==='Escape')cancelarEdicionCash()" />
-          </div>
-          <button class="cash-confirm-btn" id="cash-ars-confirm" onclick="confirmarInlineCash('ARS')">✓</button>
-          <div id="cash-ars-err" style="font-size:10px;color:var(--red);display:none;width:100%"></div>
-        </div>
-        <div class="cash-row" id="cash-usd-row">
-          <span class="cash-label">USD</span>
-          <div class="cash-val-wrap">
-            <span class="cash-val" id="cash-usd">—</span>
-            <input class="cash-input-inline" id="cash-usd-input" type="number" placeholder="0" style="display:none"
-              onkeydown="if(event.key==='Enter')confirmarInlineCash('USD');if(event.key==='Escape')cancelarEdicionCash()" />
-          </div>
-          <button class="cash-confirm-btn" id="cash-usd-confirm" onclick="confirmarInlineCash('USD')">✓</button>
-          <div id="cash-usd-err" style="font-size:10px;color:var(--red);display:none;width:100%"></div>
-        </div>
-      </div>
-      <div class="tc-widget">
-        <div class="tc-title">Tipo de cambio</div>
-        <div class="tc-row"><span class="tc-label">MEP</span><span class="tc-val" id="mep-val">—</span></div>
-        <div class="tc-row"><span class="tc-label">CCL</span><span class="tc-val" id="ccl-val">—</span></div>
-        <div class="tc-updated" id="tc-updated"></div>
-      </div>
-      <div class="tc-widget">
-        <div class="tc-title">Email reporte diario</div>
-        <div class="email-input-row">
-          <input type="email" id="email-input" placeholder="tu@email.com" />
-          <button class="email-confirm-btn" onclick="guardarEmail()">✓</button>
-        </div>
-        <div id="email-status" style="font-size:10px;color:var(--muted2);margin-top:6px;display:none"></div>
-      </div>
-      <div class="footer-theme-wrap">
-        <button class="theme-btn" onclick="toggleTheme()">◐ Tema</button>
-      </div>
-    </footer>
   </main>
 </div>
 
