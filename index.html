@@ -1835,7 +1835,10 @@ function getPortfolioVal(p,k){
 function renderPortfolio(){
   const thead=document.getElementById('portfolio-thead'),tbody=document.getElementById('tbl-portfolio');
   thead.innerHTML='';tbody.innerHTML='';
-  const tc=mepVal>0?mepVal:1423,vis=portfolioCols.filter(c=>c.visible);
+  const tc=cclVal>0?cclVal:mepVal>0?mepVal:1423,vis=portfolioCols.filter(c=>c.visible);
+  const isUSD=(activeCurrency==='USD');
+  let cclAyer=tc;
+  if(historial.length>=2){const row=historial[historial.length-2];const cclH=toN(row['CCL']);if(cclH>0){cclAyer=cclH;}else{const tARS=toN(row['Total ARS']),tUSD=toN(row['Total USD']);if(tARS>0&&tUSD>0)cclAyer=tARS/tUSD;}}
   let data=activeFilter==='Todos'?portfolio:portfolio.filter(p=>p['Tipo']===activeFilter);
   document.getElementById('portfolio-count').textContent=data.length+' posiciones';
   vis.forEach(c=>{const s=portfolioSort.key===c.key;thead.innerHTML+=`<th class="${s?'sorted':''}" onclick="sortTable('portfolio','${c.key}')">${c.label} <span class="sort-arrow">${s?(portfolioSort.asc?'▲':'▼'):'▲'}</span></th>`;});
