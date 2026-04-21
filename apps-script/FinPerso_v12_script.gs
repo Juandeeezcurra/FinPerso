@@ -967,10 +967,14 @@ function enviarReporteDiario() {
   }
 
   var yieldDia = null;
+  // CCL de ayer desde historial (para variación diaria en USD)
+  var cclAyer = ccl;
   if (hist && hist.getLastRow() >= 3) {
     var uf  = hist.getLastRow();
     var ant = _toNum(hist.getRange(uf-1, 3).getValue());
     if (ant > 0 && ant !== totalUSD) yieldDia = (totalUSD - ant) / ant;
+    var cclH = _toNum(hist.getRange(uf-1, 6).getValue());
+    if (cclH > 0) cclAyer = cclH;
   }
 
   var cp = CONFIG.port, lr = port.getLastRow();
@@ -987,7 +991,17 @@ function enviarReporteDiario() {
       if (ticker === "ARS") { cashARS = _toNum(row[cp.nominales-1]); return; }
       if (ticker === "USD") { cashUSD = _toNum(row[cp.nominales-1]); return; }
       if (!nombre || tipo === "Cash") return;
-      var rDia = pAyer > 0 ? (precio - pAyer) / pAyer : null;
+      // Variación diaria en USD: convertir precios ARS con CCL de cada día
+      var rDia = null;
+      if (pAyer > 0) {
+        if (moneda === "USD") {
+          rDia = (precio - pAyer) / pAyer;
+        } else {
+          var prUSD = ccl > 0 ? precio / ccl : 0;
+          var paUSD = cclAyer > 0 ? pAyer / cclAyer : 0;
+          rDia = paUSD > 0 ? (prUSD - paUSD) / paUSD : null;
+        }
+      }
       posiciones.push({ nombre:nombre, ticker:ticker, precio:precio, moneda:moneda, rendUSD:rUSD, rendDia:rDia, totalUSD:totUSD });
       if (rDia !== null && rDia > topG.rend) topG = { nombre:nombre, ticker:ticker, rend:rDia };
       if (rDia !== null && rDia < topL.rend) topL = { nombre:nombre, ticker:ticker, rend:rDia };
@@ -1041,8 +1055,8 @@ function enviarReporteDiario() {
       "<td width='33%' style='padding:5px'><div style='background:#fff;border-radius:10px;padding:14px;text-align:center;border:1px solid #e2e8f0'><div style='font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px'>Cash total</div><div style='font-size:20px;font-weight:700;color:#0f172a'>" + fU(cashTotal) + "</div></div></td>" +
     "</tr></table>" +
     "<table width='100%' style='background:#f1f5f9;padding:0 14px'><tr>" +
-      "<td width='50%' style='padding:5px'><div style='background:#fff;border-radius:10px;padding:10px 14px;border:1px solid #e2e8f0;text-align:center'><div style='font-size:10px;color:#94a3b8;text-transform:uppercase;margin-bottom:3px'>🏆 Top Gainer</div><div style='font-size:13px;font-weight:700'>" + (tkData.emoji[topG.ticker]||"📈") + " " + topG.nombre + "</div><div style='font-size:13px;font-weight:700;color:#16a34a'>" + (topG.rend !== -999 ? fPct(topG.rend) : "--") + "</div></div></td>" +
-      "<td width='50%' style='padding:5px'><div style='background:#fff;border-radius:10px;padding:10px 14px;border:1px solid #e2e8f0;text-align:center'><div style='font-size:10px;color:#94a3b8;text-transform:uppercase;margin-bottom:3px'>📉 Top Loser</div><div style='font-size:13px;font-weight:700'>" + (tkData.emoji[topL.ticker]||"📉") + " " + topL.nombre + "</div><div style='font-size:13px;font-weight:700;color:#dc2626'>" + (topL.rend !== 999 ? fPct(topL.rend) : "--") + "</div></div></td>" +
+      "<td width='50%' style='padding:5px'><div style='background:#fff;border-radius:10px;padding:10px 14px;border:1px solid #e2e8f0;text-align:center'><div style='font-size:10px;color:#94a3b8;text-transform:uppercase;margin-bottom:3px'>🏆 Top Gainer</div><div style='font-size:13px;font-weight:700;text-align:center'>" + (tkData.emoji[topG.ticker]||"📈") + " " + topG.nombre + "</div><div style='font-size:13px;font-weight:700;color:#16a34a;text-align:center'>" + (topG.rend !== -999 ? fPct(topG.rend) : "--") + "</div></div></td>" +
+      "<td width='50%' style='padding:5px'><div style='background:#fff;border-radius:10px;padding:10px 14px;border:1px solid #e2e8f0;text-align:center'><div style='font-size:10px;color:#94a3b8;text-transform:uppercase;margin-bottom:3px'>📉 Top Loser</div><div style='font-size:13px;font-weight:700;text-align:center'>" + (tkData.emoji[topL.ticker]||"📉") + " " + topL.nombre + "</div><div style='font-size:13px;font-weight:700;color:#dc2626;text-align:center'>" + (topL.rend !== 999 ? fPct(topL.rend) : "--") + "</div></div></td>" +
     "</tr></table>" +
     "<div style='background:#f1f5f9;padding:6px 14px'><table style='width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;border:1px solid #e2e8f0'><thead><tr style='background:#f8fafc;border-bottom:1px solid #e2e8f0'><th style='padding:9px 12px;text-align:left;font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase'>Posición</th><th style='padding:9px 12px;text-align:left;font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase'>Ticker</th><th style='padding:9px 12px;text-align:right;font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase'>Precio</th><th style='padding:9px 12px;text-align:right;font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase'>Día</th><th style='padding:9px 12px;text-align:right;font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase'>Rend. USD</th></tr></thead><tbody>" + filas + "</tbody></table></div>" +
     "<div style='background:#f1f5f9;padding:6px 14px 14px'><table style='width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;border:1px solid #e2e8f0'><thead><tr style='background:#f8fafc;border-bottom:1px solid #e2e8f0'><th style='padding:9px 12px;text-align:left;font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase'>Instrumento</th><th style='padding:9px 12px;text-align:left;font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase'>Tipo</th><th style='padding:9px 12px;text-align:right;font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase'>Saldo</th></tr></thead><tbody>" + cashF + "</tbody></table></div>" +
@@ -1059,13 +1073,14 @@ function enviarReporteDiario() {
 
 function actualizarTodo() {
   Logger.log("=== Iniciando actualización ===");
-  _guardarPrecioAyer();
   actualizarDolar();
   actualizarPrecios();
   completarOperaciones();
   recalcularPortfolio();
   enviarReporteDiario();
   _guardarSnapshotDiario();
+  // Guardar precios DESPUÉS de todo, así "ayer" = cierre de hoy para la próxima corrida
+  _guardarPrecioAyer();
   var dia = new Date().getDay();
   if (dia === 5) {
     _guardarPrecioSemanal();
