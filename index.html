@@ -1583,6 +1583,7 @@ function getColorForTicker(ticker, tipo, idxInTipo){
 let API_URL='',portfolio=[],operaciones=[],historial=[],efectivo=[],mepVal=0,cclVal=0;
 let compChart=null,tipoChart=null,evoChart=null;
 let activeFilter='Todos';
+let activeCurrency='ARS'; // 'ARS' o 'USD' — controla toda la UI de Resumen
 
 const portfolioCols=[
   {key:'Activo',label:'Activo',visible:true},{key:'Tipo',label:'Tipo',visible:true},
@@ -2113,7 +2114,6 @@ function renderCharts(){
 
 // ── EVO CHART: modo USD absoluto o % vs benchmarks ──
 let evoMode='usd';
-let activeCurrency='ARS'; // 'ARS' o 'USD' — controla toda la UI de Resumen
 let benchData={merval:null,sp500:null};
 let benchLoading=false;
 
