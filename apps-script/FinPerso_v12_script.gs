@@ -1358,9 +1358,53 @@ function _parseFecha(fecha) {
   }
 }
 
+function _getBenchmarkData(symbol) {
+  // Últimos 6 meses de datos diarios desde Yahoo Finance
+  var now    = Math.floor(Date.now() / 1000);
+  var desde  = now - 180 * 86400;
+  var url    = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(symbol)
+             + "?period1=" + desde + "&period2=" + now + "&interval=1d";
+  var res    = UrlFetchApp.fetch(url, {
+    muteHttpExceptions: true,
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; Google-Apps-Script)" }
+  });
+  var data   = JSON.parse(res.getContentText());
+  var result = data && data.chart && data.chart.result && data.chart.result[0];
+  if (!result || !result.timestamp) return [];
+
+  var timestamps = result.timestamp;
+  var closes     = result.indicators.quote[0].close;
+  var out        = [];
+  for (var i = 0; i < timestamps.length; i++) {
+    if (closes[i] === null || closes[i] === undefined) continue;
+    var d = new Date(timestamps[i] * 1000);
+    var fecha = Utilities.formatDate(d, "America/Argentina/Buenos_Aires", "yyyy-MM-dd");
+    out.push({ fecha: fecha, close: closes[i] });
+  }
+  return out;
+}
+
 function doGet(e) {
   var ss    = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = e.parameter.sheet;
+
+  // Benchmark: devolver datos históricos de Yahoo Finance
+  if (sheet === "Benchmark") {
+    var symbol = e.parameter.symbol || "";
+    if (!symbol) {
+      return ContentService.createTextOutput(JSON.stringify({ error: "Falta parámetro symbol" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    try {
+      var benchData = _getBenchmarkData(symbol);
+      return ContentService.createTextOutput(JSON.stringify(benchData))
+        .setMimeType(ContentService.MimeType.JSON);
+    } catch(err) {
+      return ContentService.createTextOutput(JSON.stringify({ error: err.message }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
   var ws    = ss.getSheetByName(sheet);
   if (!ws) {
     return ContentService.createTextOutput(JSON.stringify({ error: "Hoja no encontrada: " + sheet }))
