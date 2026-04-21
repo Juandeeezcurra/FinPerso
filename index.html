@@ -555,9 +555,7 @@
   .numbers-hidden .hero-value,
   .numbers-hidden .metric-value-blur,
   .numbers-hidden .cash-val,
-  .numbers-hidden .blur-val { filter: blur(10px); user-select: none; pointer-events: none; }
-  .numbers-hidden td.blur-val,
-  .numbers-hidden .cash-val { overflow: visible; clip-path: none; -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%); mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%); }
+  .numbers-hidden .blur-val { filter: blur(8px); user-select: none; pointer-events: none; }
 
   /* ── HERO CARD ── */
   .hero-card {
@@ -1868,8 +1866,8 @@ function renderPortfolio(){
       Precio:`<td class="mono cell-nowrap">${fmtPrecio(p['Precio'])}${!esCash?editBtn:''}</td>`,
       PPC:`<td class="mono cell-muted">${fmtPPC(p['PPC'])}</td>`,
       DPT:`<td class="mono cell-muted">${dpt>0?Math.round(dpt)+'d':'—'}</td>`,
-      TotalARS:`<td class="mono blur-val">${fmtARS(toN(p['Total ARS']))}</td>`,
-      TotalUSD:`<td class="mono blur-val">${fmtUSD(toN(p['Total USD']))}</td>`,
+      TotalARS:`<td class="mono"><span class="blur-val">${fmtARS(toN(p['Total ARS']))}</span></td>`,
+      TotalUSD:`<td class="mono"><span class="blur-val">${fmtUSD(toN(p['Total USD']))}</span></td>`,
       PctPort:`<td class="mono">${(pct*100).toFixed(1)}%</td>`,
       VarDia:(()=>{const pr=toN(p['Precio']),pa=toN(p['Precio Ayer']);if(!pa||p['Tipo']==='Cash')return'<td class="mono neu">—</td>';let v;if(isUSD&&p['Moneda']!=='USD'){const prU=tc>0?pr/tc:0,paU=cclAyer>0?pa/cclAyer:0;v=paU>0?(prU-paU)/paU:0;}else{v=pa>0?(pr-pa)/pa:0;}const vc=v>0?'pos':v<0?'neg':'neu';return`<td class="mono ${vc}">${v>0?'+':''}${(v*100).toFixed(2)}%</td>`})(),
       RendUSD:`<td class="mono ${rc}">${rend>0?'+':''}${(rend*100).toFixed(1)}%</td>`
@@ -1911,8 +1909,8 @@ function renderOperaciones(){
       Moneda:`<td><span class="badge" style="${monedaBadgeStyle}">${moneda}</span></td>`,
       Nominales:`<td class="mono">${toN(o['Nominales']).toLocaleString('es-AR')}</td>`,
       Precio:`<td class="mono">${fmtOpPrecio(o['Precio'])}</td>`,
-      TotalARS:`<td class="mono blur-val">${fmtARS(toN(o['Total ARS']))}</td>`,
-      TotalUSD:`<td class="mono blur-val">${fmtUSD(toN(o['Total USD']))}</td>`,
+      TotalARS:`<td class="mono"><span class="blur-val">${fmtARS(toN(o['Total ARS']))}</span></td>`,
+      TotalUSD:`<td class="mono"><span class="blur-val">${fmtUSD(toN(o['Total USD']))}</span></td>`,
       TC:`<td class="mono cell-muted">$${Math.round(toN(o['TC'])).toLocaleString()}</td>`,
       Acciones:`<td><div class="row-actions"><button class="row-btn" onclick="editarOp(${fila})" title="Editar">✎</button><button class="row-btn del" onclick="borrarOp(${fila})" title="Borrar">✕</button></div></td>`
     };
