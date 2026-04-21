@@ -556,6 +556,8 @@
   .numbers-hidden .metric-value-blur,
   .numbers-hidden .cash-val,
   .numbers-hidden .blur-val { filter: blur(10px); user-select: none; pointer-events: none; }
+  .numbers-hidden td.blur-val,
+  .numbers-hidden .cash-val { overflow: visible; clip-path: none; -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%); mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%); }
 
   /* ── HERO CARD ── */
   .hero-card {
