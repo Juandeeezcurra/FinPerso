@@ -458,6 +458,7 @@
 
   /* ── MAIN ── */
   .main {
+    grid-column: 2;
     padding: var(--space-6) var(--space-8);
     background: var(--bg);
     min-width: 0;
@@ -1192,7 +1193,7 @@
     .nav-item .nav-icon svg { width: 22px; height: 22px; }
     .sidebar-reopen { display: none !important; }
 
-    .main { padding: calc(var(--space-5) + env(safe-area-inset-top, 0px)) var(--space-5) 120px; }
+    .main { grid-column: auto; padding: calc(var(--space-5) + env(safe-area-inset-top, 0px)) var(--space-5) 120px; }
     .page-title { font-size: var(--text-xl); }
     .hero-card { padding: var(--space-6) var(--space-5); }
     .hero-value { font-size: var(--text-2xl); }
