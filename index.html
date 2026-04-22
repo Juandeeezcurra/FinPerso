@@ -256,9 +256,11 @@
     background: var(--bg-elevated);
     border-right: 1px solid var(--border);
     padding: var(--space-6) 0 var(--space-4);
-    min-height: 100vh;
+    position: sticky; top: 0;
+    height: 100vh;
     display: flex;
     flex-direction: column;
+    overflow-y: auto;
     transition: transform var(--dur-slow) var(--ease-out),
                 opacity var(--dur-base) var(--ease),
                 padding var(--dur-slow) var(--ease-out);
@@ -1149,6 +1151,7 @@
       position: fixed;
       bottom: 0; left: 0; right: 0; top: auto;
       height: auto;
+      min-height: 0;
       padding: var(--space-2) 0 calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
       flex-direction: row;
       border-right: none;
