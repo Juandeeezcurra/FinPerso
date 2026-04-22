@@ -256,11 +256,9 @@
     background: var(--bg-elevated);
     border-right: 1px solid var(--border);
     padding: var(--space-6) 0 var(--space-4);
-    position: sticky; top: 0;
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
     transition: transform var(--dur-slow) var(--ease-out),
                 opacity var(--dur-base) var(--ease),
                 padding var(--dur-slow) var(--ease-out);
