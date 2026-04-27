@@ -62,7 +62,10 @@ var CONFIG = {
 //  El frontend debe enviar ?token=<valor> (GET) o payload.token (POST)
 // ============================================================
 
-var ALLOWED_SHEETS = ["Portfolio", "Operaciones", "Efectivo", "Historial", "Benchmark"];
+var ALLOWED_SHEETS  = ["Portfolio", "Operaciones", "Efectivo", "Historial", "Benchmark"];
+var ORDENES_VALIDAS = ["Compra", "Venta"];
+var MONEDAS_VALIDAS = ["ARS", "USD"];
+var TIPOS_VALIDOS   = ["Equity", "Bonos", "Crypto", "Cash", "Agro"];
 
 // ============================================================
 //  HELPERS
@@ -1222,6 +1225,9 @@ function doPost(e) {
       if (!fecha || !orden || !ticker || !tipo || !moneda || nominales <= 0 || precio <= 0) {
         return _jsonOut({ error: "Faltan campos obligatorios" });
       }
+      if (ORDENES_VALIDAS.indexOf(orden) === -1)  return _jsonOut({ error: "Orden inválida: " + orden });
+      if (MONEDAS_VALIDAS.indexOf(moneda) === -1) return _jsonOut({ error: "Moneda inválida: " + moneda });
+      if (TIPOS_VALIDOS.indexOf(tipo) === -1)     return _jsonOut({ error: "Tipo inválido: " + tipo });
 
       var fechaObj = _parseFecha(fecha);
       var tkData = _getTickers();
@@ -1361,6 +1367,9 @@ function doPost(e) {
     if (!fecha || !orden || !ticker || !tipo || !moneda || nominales <= 0 || precio <= 0) {
       return _jsonOut({ error: "Faltan campos obligatorios" });
     }
+    if (ORDENES_VALIDAS.indexOf(orden) === -1)  return _jsonOut({ error: "Orden inválida: " + orden });
+    if (MONEDAS_VALIDAS.indexOf(moneda) === -1) return _jsonOut({ error: "Moneda inválida: " + moneda });
+    if (TIPOS_VALIDOS.indexOf(tipo) === -1)     return _jsonOut({ error: "Tipo inválido: " + tipo });
 
     var fechaObj = _parseFecha(fecha);
     var tkData = _getTickers();
