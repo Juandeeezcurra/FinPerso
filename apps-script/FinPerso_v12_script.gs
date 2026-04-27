@@ -322,34 +322,43 @@ function actualizarDolar() {
 //  CCL HISTÓRICO — fuente principal para toda valuación USD
 // ============================================================
 
-function _getCCLHistorico(fecha) {
+// Descarga el dataset completo del CCL histórico una vez. Usar en completarOperaciones.
+function _fetchCCLHistData() {
   try {
     var url   = "https://api.argentinadatos.com/v1/cotizaciones/dolares/contadoconliqui";
     var res   = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
     var datos = JSON.parse(res.getContentText());
-    if (!Array.isArray(datos) || datos.length === 0) return _getTCOperacion();
-
-    var fechaObj   = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
-    var mejor      = null;
-    var diferencia = Infinity;
-
-    datos.forEach(function(d) {
-      if (!d.fecha || !d.venta) return;
-      var partes = d.fecha.split("-");
-      var df     = new Date(parseInt(partes[0]), parseInt(partes[1])-1, parseInt(partes[2]));
-      var diff   = fechaObj - df;
-      // Busca el CCL del día exacto o el anterior más cercano
-      if (diff >= 0 && diff < diferencia) {
-        diferencia = diff;
-        mejor = _toNum(d.venta);
-      }
-    });
-
-    return (mejor && mejor > 0) ? mejor : _getTCOperacion();
+    return Array.isArray(datos) ? datos : null;
   } catch(e) {
-    Logger.log("Error CCL histórico: " + e.message);
-    return _getTCOperacion();
+    Logger.log("Error fetch CCL histórico: " + e.message);
+    return null;
   }
+}
+
+// Busca el CCL más cercano (igual o anterior) en un dataset ya descargado.
+function _lookupCCLFromData(datos, fecha) {
+  if (!datos || datos.length === 0) return _getTCOperacion();
+  var fechaObj   = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+  var mejor      = null;
+  var diferencia = Infinity;
+  datos.forEach(function(d) {
+    if (!d.fecha || !d.venta) return;
+    var partes = d.fecha.split("-");
+    var df     = new Date(parseInt(partes[0]), parseInt(partes[1])-1, parseInt(partes[2]));
+    var diff   = fechaObj - df;
+    // Busca el CCL del día exacto o el anterior más cercano
+    if (diff >= 0 && diff < diferencia) {
+      diferencia = diff;
+      mejor = _toNum(d.venta);
+    }
+  });
+  return (mejor && mejor > 0) ? mejor : _getTCOperacion();
+}
+
+// Wrapper conveniente para llamadas individuales (onEdit, doPost, etc.)
+function _getCCLHistorico(fecha) {
+  var datos = _fetchCCLHistData();
+  return _lookupCCLFromData(datos, fecha);
 }
 
 // Mantenemos _getMEPHistorico por compatibilidad pero ya no se usa para operaciones
@@ -786,6 +795,9 @@ function completarOperaciones() {
 
   actualizarPrecios();
 
+  // Descarga el histórico CCL una única vez para toda la pasada (WR-02)
+  var cclHistData = _fetchCCLHistData();
+
   var co      = CONFIG.ops;
   var lastRow = sheet.getLastRow();
   var datos   = sheet.getRange(2, 1, lastRow-1, 12).getValues();
@@ -809,8 +821,8 @@ function completarOperaciones() {
       }
     }
 
-    // CCL histórico del día de la operación
-    var tc = _getCCLHistorico(fecha);
+    // CCL histórico del día de la operación — usa dataset ya descargado, sin HTTP extra
+    var tc = _lookupCCLFromData(cclHistData, fecha);
     if (tc > 0) {
       sheet.getRange(fila, co.tc).setValue(tc);
       cambios++;
