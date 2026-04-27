@@ -633,7 +633,12 @@ function recalcularPortfolio() {
       if (moneda === "USD") cashDelta.USD -= (totalUSD || montoUSD);
       else                  cashDelta.ARS -= (totalARS || montoARS);
     } else if (orden === "Venta") {
-      var prop = resumen[ticker].nominales > 0 ? nominales / resumen[ticker].nominales : 0;
+      if (nominales > resumen[ticker].nominales) {
+        Logger.log("WARN: Venta mayor que nominales para " + ticker +
+                   " (venta=" + nominales + " nominales=" + resumen[ticker].nominales + ")");
+      }
+      var prop = resumen[ticker].nominales > 0
+        ? Math.min(1, nominales / resumen[ticker].nominales) : 0;
       resumen[ticker].nominales       -= nominales;
       resumen[ticker].costoARS        -= resumen[ticker].costoARS * prop;
       resumen[ticker].costoUSD        -= resumen[ticker].costoUSD * prop;
