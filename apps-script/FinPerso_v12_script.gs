@@ -1526,7 +1526,6 @@ function doGet(e) {
   }
   var data    = ws.getDataRange().getValues();
   var headers = data[0];
-  var rows    = data.slice(1).filter(function(r){ return r[0] !== "" && r[0] !== null; });
 
   var isOps = sheet === CONFIG.hojas.operaciones;
   var isEft = sheet === CONFIG.hojas.efectivo;
