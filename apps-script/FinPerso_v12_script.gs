@@ -989,14 +989,19 @@ function snapshotSemanal() {
   }
 
   if (!valorAnt) {
+    // Buscar la entrada más cercana a 7 días atrás: recorrer todo el dataset
+    // sin romper anticipado para encontrar el mínimo-diff real (WR-04).
+    var target    = 7 * 86400000;
     var mejorDiff = Infinity;
-    for (var i = datos.length - 1; i >= 0; i--) {
+    for (var i = 0; i < datos.length; i++) {
       if (!(datos[i][0] instanceof Date)) continue;
       var diff = hoy - datos[i][0];
-      if (diff > 0 && diff < mejorDiff && diff > 86400000) {
-        mejorDiff = diff;
-        valorAnt = _toNum(datos[i][2]);
-        if (mejorDiff <= 8 * 86400000) break;
+      // Solo considerar entradas de más de 1 día de antigüedad
+      if (diff <= 86400000) continue;
+      var distancia = Math.abs(diff - target);
+      if (distancia < mejorDiff) {
+        mejorDiff = distancia;
+        valorAnt  = _toNum(datos[i][2]);
       }
     }
   }
