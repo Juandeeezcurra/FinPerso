@@ -1442,13 +1442,16 @@ function _jsonOut(obj) {
 }
 
 function _parseFecha(fecha) {
-  if (fecha.includes("/")) {
+  if (!fecha || typeof fecha !== "string") throw new Error("Fecha inválida: " + fecha);
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(fecha)) {
     var p = fecha.split("/");
     return new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
-  } else {
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
     var p = fecha.split("-");
     return new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2]));
   }
+  throw new Error("Formato de fecha no reconocido: " + fecha);
 }
 
 function _getBenchmarkData(symbol) {
