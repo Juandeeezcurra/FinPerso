@@ -57,6 +57,14 @@ var CONFIG = {
 };
 
 // ============================================================
+//  AUTH — shared-secret token leído desde Script Properties
+//  En el editor: Proyecto → Propiedades del script → API_TOKEN
+//  El frontend debe enviar ?token=<valor> (GET) o payload.token (POST)
+// ============================================================
+
+var ALLOWED_SHEETS = ["Portfolio", "Operaciones", "Efectivo", "Historial", "Benchmark"];
+
+// ============================================================
 //  HELPERS
 // ============================================================
 
@@ -1176,6 +1184,11 @@ function doPost(e) {
     var payload = JSON.parse(e.postData.contents);
     var action  = payload.action || "";
 
+    var API_TOKEN = PropertiesService.getScriptProperties().getProperty("API_TOKEN");
+    if (API_TOKEN && payload.token !== API_TOKEN) {
+      return _jsonOut({ error: "Unauthorized" });
+    }
+
     if (action === 'updateEmail') {
       _setValor("Email reporte", payload.email || "");
       return ContentService.createTextOutput(JSON.stringify({ ok: true, mensaje: "Email actualizado" }))
@@ -1441,8 +1454,19 @@ function _getBenchmarkData(symbol) {
 }
 
 function doGet(e) {
+  var API_TOKEN = PropertiesService.getScriptProperties().getProperty("API_TOKEN");
+  if (API_TOKEN && e.parameter.token !== API_TOKEN) {
+    return ContentService.createTextOutput(JSON.stringify({ error: "Unauthorized" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
   var ss    = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = e.parameter.sheet;
+
+  if (!sheet || ALLOWED_SHEETS.indexOf(sheet) === -1) {
+    return ContentService.createTextOutput(JSON.stringify({ error: "Hoja no permitida: " + sheet }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 
   // Benchmark: devolver datos históricos de Yahoo Finance
   if (sheet === "Benchmark") {
