@@ -1427,7 +1427,9 @@ function _getBenchmarkData(symbol) {
   if (!result || !result.timestamp) return [];
 
   var timestamps = result.timestamp;
-  var closes     = result.indicators.quote[0].close;
+  var closes     = (result.indicators && result.indicators.quote &&
+                    result.indicators.quote[0] && result.indicators.quote[0].close) || [];
+  if (closes.length === 0) return [];
   var out        = [];
   for (var i = 0; i < timestamps.length; i++) {
     if (closes[i] === null || closes[i] === undefined) continue;
