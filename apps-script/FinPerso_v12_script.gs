@@ -919,6 +919,13 @@ function onEdit(e) {
 //  7. HISTORIAL — guarda CCL en columna 6
 // ============================================================
 
+/**
+ * @deprecated Esta función ya NO se llama desde actualizarTodo (WR-06).
+ * actualizarPrecios() escribe precioAyer usando el previousClose de Yahoo.
+ * Si se llama DESPUÉS de actualizarPrecios sobreescribirá "precio ayer" con el precio
+ * actual, haciendo que la variación diaria siempre sea 0.
+ * Mantener solo por compatibilidad; NO invocar manualmente.
+ */
 function _guardarPrecioAyer() {
   var port = _getHoja(CONFIG.hojas.portfolio);
   if (!port || port.getLastRow() < 2) return;
