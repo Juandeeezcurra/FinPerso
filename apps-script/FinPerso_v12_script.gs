@@ -426,25 +426,35 @@ function _getPrecioYahoo(symbol) {
     if (closes[i] !== null && closes[i] !== undefined) validCloses.push(closes[i]);
   }
 
-  // Lógica de detección:
-  //   - Si regularMarketTime existe, es autoritativo (timestamp exacto del trade).
-  //   - Si no, probamos en este orden:
-  //       a) lastTimestamp del chart === hoy → seguro de hoy (chart al día).
-  //       b) si a falla (chart atrasado), heurística: precio ≠ lastClose
-  //          significa que regularMarketPrice es más fresco que el chart.
-  //   - Importante: a) que devuelva FALSE no concluye nada (solo que el chart
-  //     está atrasado), por eso b) actúa como fallback, no como exclusivo.
+  // Detección de precioEsDeHoy: cualquier señal positiva basta.
+  // Si todas son negativas/ausentes, asumimos NO de hoy (no escribir col O).
+  //   1) regularMarketTime de hoy
+  //   2) último timestamp del chart de hoy
+  //   3) precio ≠ último cierre del chart con margen >0.5%
+  //   4) precio ≠ meta.previousClose con margen >0.5%
+  // Las señales 3 y 4 cubren el caso donde Yahoo devuelve respuesta pobre
+  // (sin regularMarketTime, sin chart) pero el precio es claramente fresco.
   var precioEsDeHoy = false;
-  if (meta.regularMarketTime) {
-    precioEsDeHoy = (_fechaARG(meta.regularMarketTime) === hoyARG);
-  } else {
-    if (timestamps.length > 0 && _fechaARG(timestamps[timestamps.length - 1]) === hoyARG) {
-      precioEsDeHoy = true;
-    } else if (precio && validCloses.length >= 1) {
-      var lastCloseChk = validCloses[validCloses.length - 1];
-      var epsChk = Math.max(0.01, Math.abs(lastCloseChk) * 0.0005);
-      precioEsDeHoy = (Math.abs(precio - lastCloseChk) > epsChk);
-    }
+  if (meta.regularMarketTime && _fechaARG(meta.regularMarketTime) === hoyARG) {
+    precioEsDeHoy = true;
+  }
+  if (!precioEsDeHoy && timestamps.length > 0 && _fechaARG(timestamps[timestamps.length - 1]) === hoyARG) {
+    precioEsDeHoy = true;
+  }
+  if (!precioEsDeHoy && precio && validCloses.length >= 1) {
+    var lc = validCloses[validCloses.length - 1];
+    if (Math.abs(precio - lc) > Math.max(0.01, Math.abs(lc) * 0.005)) precioEsDeHoy = true;
+  }
+  if (!precioEsDeHoy && precio && meta.previousClose) {
+    var pc = meta.previousClose;
+    if (Math.abs(precio - pc) > Math.max(0.01, Math.abs(pc) * 0.005)) precioEsDeHoy = true;
+  }
+  if (!precioEsDeHoy) {
+    Logger.log("DEBUG " + symbol + ": precioEsDeHoy=false. " +
+               "regularMarketTime=" + meta.regularMarketTime + ", " +
+               "timestamps=" + timestamps.length + ", " +
+               "validCloses=" + validCloses.length + ", " +
+               "precio=" + precio + ", previousClose=" + meta.previousClose);
   }
 
   // previousClose: priorizar meta.previousClose (Yahoo lo expone como cierre del
