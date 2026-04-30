@@ -449,14 +449,6 @@ function _getPrecioYahoo(symbol) {
     var pc = meta.previousClose;
     if (Math.abs(precio - pc) > Math.max(0.01, Math.abs(pc) * 0.005)) precioEsDeHoy = true;
   }
-  if (!precioEsDeHoy) {
-    Logger.log("DEBUG " + symbol + ": precioEsDeHoy=false. " +
-               "regularMarketTime=" + meta.regularMarketTime + ", " +
-               "timestamps=" + timestamps.length + ", " +
-               "validCloses=" + validCloses.length + ", " +
-               "precio=" + precio + ", previousClose=" + meta.previousClose);
-  }
-
   // previousClose: priorizar meta.previousClose (Yahoo lo expone como cierre del
   // día hábil anterior al regularMarketPrice). Fallback al chart sólo si falta.
   var previousClose = null;
@@ -471,6 +463,16 @@ function _getPrecioYahoo(symbol) {
         previousClose = lastClose;
       }
     }
+  }
+
+  if (!previousClose) {
+    Logger.log("DEBUG " + symbol + ": previousClose=null. " +
+               "precioEsDeHoy=" + precioEsDeHoy + ", " +
+               "regularMarketTime=" + meta.regularMarketTime + ", " +
+               "timestamps=" + timestamps.length + ", " +
+               "validCloses=" + validCloses.length + ", " +
+               "precio=" + precio + ", meta.previousClose=" + meta.previousClose + ", " +
+               "meta.chartPreviousClose=" + meta.chartPreviousClose);
   }
 
   return {
