@@ -2227,6 +2227,17 @@ function _normalize(arr){
   });
 }
 
+function _normalizeFromIndex(arr,startIndex){
+  if(!arr||!arr.length)return arr;
+  let base=null;
+  return arr.map((v,i)=>{
+    if(i<startIndex)return null;
+    if(v===null||v===undefined)return null;
+    if(base===null)base=v;
+    return base>0?((v-base)/base)*100:0;
+  });
+}
+
 function _histCcl(h){
   const ccl=toN(h['CCL']);
   if(ccl>0)return ccl;
@@ -2283,9 +2294,11 @@ function _portfolioReturnPctSeries(isUSD){
   const values=historial.map(h=>toN(isUSD?h['Total USD']:h['Total ARS']));
   const labels=historial.map(h=>_parseDateKey(h['Fecha']||''));
   const flows=_externalFlowsByDate(isUSD,labels);
+  const firstFundingIndex=Math.max(0,labels.findIndex(l=>(flows[l]||0)>0));
   let index=1;
-  return values.map((value,i)=>{
-    if(i===0)return 0;
+  const series=values.map((value,i)=>{
+    if(i<firstFundingIndex)return null;
+    if(i===firstFundingIndex)return 0;
     const prev=values[i-1];
     if(prev<=0||value<=0)return null;
     const flow=flows[labels[i]]||0;
@@ -2295,6 +2308,8 @@ function _portfolioReturnPctSeries(isUSD){
     index*=1+daily;
     return (index-1)*100;
   });
+  series._startIndex=firstFundingIndex;
+  return series;
 }
 
 function _benchmarkToCurrency(values,labels,nativeCurrency,targetCurrency){
@@ -2343,6 +2358,7 @@ function renderEvoChart(){
     // Modo % vs benchmarks: retorno encadenado, ajustado por aportes/retiros externos
     const isUSDpct=(activeCurrency==='USD');
     const portPct=_portfolioReturnPctSeries(isUSDpct);
+    const startIndex=portPct._startIndex||0;
     const datasets=[{
       label:'Mi portfolio',data:portPct,borderColor:'#60a5fa',
       backgroundColor:'transparent',borderWidth:2.5,
@@ -2353,13 +2369,13 @@ function renderEvoChart(){
     if(showMerval&&benchData.merval){
       const aligned=_alignBench(benchData.merval,evoLabels);
       const sameCurrency=_benchmarkToCurrency(aligned,evoLabels,'ARS',isUSDpct?'USD':'ARS');
-      const norm=_normalize(sameCurrency);
+      const norm=_normalizeFromIndex(sameCurrency,startIndex);
       if(norm) datasets.push({label:'MERVAL',data:norm,borderColor:'#fbbf24',backgroundColor:'transparent',borderWidth:1.5,borderDash:[5,3],pointRadius:0,tension:0.3});
     }
     if(showSP&&benchData.sp500){
       const aligned=_alignBench(benchData.sp500,evoLabels);
       const sameCurrency=_benchmarkToCurrency(aligned,evoLabels,'USD',isUSDpct?'USD':'ARS');
-      const norm=_normalize(sameCurrency);
+      const norm=_normalizeFromIndex(sameCurrency,startIndex);
       if(norm) datasets.push({label:'S&P 500',data:norm,borderColor:'#a78bfa',backgroundColor:'transparent',borderWidth:1.5,borderDash:[5,3],pointRadius:0,tension:0.3});
     }
     evoChart=new Chart(document.getElementById('chartEvo'),{type:'line',data:{labels:evoLabels,datasets},options:{responsive:true,maintainAspectRatio:false,
