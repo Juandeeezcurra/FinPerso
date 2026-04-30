@@ -2218,6 +2218,73 @@ function _normalize(arr){
   });
 }
 
+function _histCcl(h){
+  const ccl=toN(h['CCL']);
+  if(ccl>0)return ccl;
+  const ars=toN(h['Total ARS']),usd=toN(h['Total USD']);
+  return ars>0&&usd>0?ars/usd:0;
+}
+
+function _cclForDate(dateKey){
+  const rows=historial
+    .map(h=>({key:_parseDateKey(h['Fecha']||''),ccl:_histCcl(h)}))
+    .filter(r=>r.key&&r.ccl>0)
+    .sort((a,b)=>a.key.localeCompare(b.key));
+  let best=0;
+  for(const r of rows){
+    if(r.key>dateKey)break;
+    best=r.ccl;
+  }
+  return best||cclVal||mepVal||1423;
+}
+
+function _externalFlowsByDate(isUSD){
+  const flows={};
+  efectivo.forEach(r=>{
+    const key=_parseDateKey(r['Fecha']||'');
+    if(!key)return;
+    const tipo=String(r['Tipo']||'').toLowerCase();
+    const sign=tipo.startsWith('dep')?1:-1;
+    const monto=toN(r['Monto']);
+    const moneda=r['Moneda']||'ARS';
+    const ccl=_cclForDate(key);
+    let value=0;
+    if(isUSD){
+      value=moneda==='USD'?monto:(ccl>0?monto/ccl:0);
+    } else {
+      value=moneda==='USD'?monto*ccl:monto;
+    }
+    flows[key]=(flows[key]||0)+sign*value;
+  });
+  return flows;
+}
+
+function _portfolioReturnPctSeries(isUSD){
+  const flows=_externalFlowsByDate(isUSD);
+  const values=historial.map(h=>toN(isUSD?h['Total USD']:h['Total ARS']));
+  const labels=historial.map(h=>_parseDateKey(h['Fecha']||''));
+  let index=1;
+  return values.map((value,i)=>{
+    if(i===0)return 0;
+    const prev=values[i-1];
+    if(prev<=0||value<=0)return null;
+    const flow=flows[labels[i]]||0;
+    const daily=((value-flow)/prev)-1;
+    index*=1+daily;
+    return (index-1)*100;
+  });
+}
+
+function _benchmarkToCurrency(values,labels,nativeCurrency,targetCurrency){
+  return values.map((v,i)=>{
+    if(v===null||v===undefined)return null;
+    if(nativeCurrency===targetCurrency)return v;
+    const ccl=_cclForDate(_parseDateKey(labels[i]||''));
+    if(ccl<=0)return null;
+    return targetCurrency==='USD'?v/ccl:v*ccl;
+  });
+}
+
 function renderEvoChart(){
   if(evoChart){evoChart.destroy();evoChart=null;}
   if(!historial.length)return;
@@ -2227,7 +2294,7 @@ function renderEvoChart(){
   const evoLabels=historial.map(h=>h['Fecha']||'');
   const smallDs=historial.length>60;
   const subEl=document.getElementById('evo-chart-sub');
-  if(subEl) subEl.textContent=evoMode==='usd'?('Valor absoluto en '+(activeCurrency==='USD'?'USD':'ARS')):'Rendimiento % normalizado desde el primer dato';
+  if(subEl) subEl.textContent=evoMode==='usd'?('Valor absoluto en '+(activeCurrency==='USD'?'USD':'ARS')):'Retorno % ajustado por aportes/retiros';
 
   if(evoMode==='usd'){
     // Modo absoluto — ARS o USD según switch global
@@ -2251,9 +2318,9 @@ function renderEvoChart(){
       }
     }});
   } else {
-    // Modo % normalizado vs benchmarks
+    // Modo % vs benchmarks: retorno encadenado, ajustado por aportes/retiros externos
     const isUSDpct=(activeCurrency==='USD');
-    const portPct=_normalize(historial.map(h=>toN(isUSDpct?h['Total USD']:h['Total ARS'])));
+    const portPct=_portfolioReturnPctSeries(isUSDpct);
     const datasets=[{
       label:'Mi portfolio',data:portPct,borderColor:'#60a5fa',
       backgroundColor:'transparent',borderWidth:2.5,
@@ -2263,12 +2330,14 @@ function renderEvoChart(){
     const showSP=document.getElementById('evo-chk-sp500').checked;
     if(showMerval&&benchData.merval){
       const aligned=_alignBench(benchData.merval,evoLabels);
-      const norm=_normalize(aligned);
+      const sameCurrency=_benchmarkToCurrency(aligned,evoLabels,'ARS',isUSDpct?'USD':'ARS');
+      const norm=_normalize(sameCurrency);
       if(norm) datasets.push({label:'MERVAL',data:norm,borderColor:'#fbbf24',backgroundColor:'transparent',borderWidth:1.5,borderDash:[5,3],pointRadius:0,tension:0.3});
     }
     if(showSP&&benchData.sp500){
       const aligned=_alignBench(benchData.sp500,evoLabels);
-      const norm=_normalize(aligned);
+      const sameCurrency=_benchmarkToCurrency(aligned,evoLabels,'USD',isUSDpct?'USD':'ARS');
+      const norm=_normalize(sameCurrency);
       if(norm) datasets.push({label:'S&P 500',data:norm,borderColor:'#a78bfa',backgroundColor:'transparent',borderWidth:1.5,borderDash:[5,3],pointRadius:0,tension:0.3});
     }
     evoChart=new Chart(document.getElementById('chartEvo'),{type:'line',data:{labels:evoLabels,datasets},options:{responsive:true,maintainAspectRatio:false,
