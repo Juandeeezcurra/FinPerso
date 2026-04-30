@@ -1812,15 +1812,61 @@ function exportCSV(type){
 
 // ── RENDER PORTFOLIO ──
 function getPortfolioVal(p,k){
-  const tc=mepVal>0?mepVal:1423;
+  const tc=cclVal>0?cclVal:mepVal>0?mepVal:1423;
+  const cclAyer=getCclAyer(tc);
   switch(k){
     case'Activo':return p['Nombre']||p['Ticker']||'';case'Tipo':return p['Tipo']||'';
     case'Nominales':return toN(p['Nominales']);case'Precio':return toN(p['Precio']);
     case'PPC':return toN(p['PPC']);case'DPT':return toN(p['DPT']);
     case'TotalARS':return toN(p['Total ARS']);case'TotalUSD':return toN(p['Total USD']);
-    case'PctPort':return toN(p['% Portfolio']);case'VarDia':{const pr=toN(p['Precio']),pa=toN(p['Precio Ayer']);return pa>0?(pr-pa)/pa:0;}case'RendUSD':return toN(p['Rend. USD']);
+    case'PctPort':return toN(p['% Portfolio']);case'VarDia':return calcDailyReturn(p,activeCurrency==='USD',tc,cclAyer)??0;case'RendUSD':return toN(p['Rend. USD']);
     default:return'';
   }
+}
+
+function getCclAyer(tc){
+  let cclAyer=tc;
+  if(historial.length>=2){
+    const row=historial[historial.length-2];
+    const cclH=toN(row['CCL']);
+    if(cclH>0){
+      cclAyer=cclH;
+    } else {
+      const tARS=toN(row['Total ARS']),tUSD=toN(row['Total USD']);
+      if(tARS>0&&tUSD>0)cclAyer=tARS/tUSD;
+    }
+  }
+  return cclAyer;
+}
+
+function calcDailyReturn(p,isUSD,tc,cclAyer){
+  const pr=toN(p['Precio']),pa=toN(p['Precio Ayer']);
+  if(!pa||p['Tipo']==='Cash')return null;
+  const esUSDticker=(p['Moneda']==='USD');
+  if(isUSD){
+    const prUSD=esUSDticker?pr:(tc>0?pr/tc:0);
+    const paUSD=esUSDticker?pa:(cclAyer>0?pa/cclAyer:0);
+    return paUSD>0?(prUSD-paUSD)/paUSD:null;
+  }
+  const prARS=esUSDticker?pr*tc:pr;
+  const paARS=esUSDticker?pa*cclAyer:pa;
+  return paARS>0?(prARS-paARS)/paARS:null;
+}
+
+function getDailyInvestmentValues(items,tc,cclAyer){
+  return items.reduce((acc,p)=>{
+    const nom=toN(p['Nominales']);
+    const precio=toN(p['Precio']);
+    const pAyer=toN(p['Precio Ayer'])||precio;
+    if(p['Moneda']==='USD'){
+      acc.hoyUSD+=nom*precio;
+      acc.ayerUSD+=nom*pAyer;
+    } else {
+      acc.hoyARS+=nom*precio;
+      acc.ayerARS+=nom*pAyer;
+    }
+    return acc;
+  },{hoyARS:0,hoyUSD:0,ayerARS:0,ayerUSD:0});
 }
 
 function renderPortfolio(){
@@ -1828,8 +1874,7 @@ function renderPortfolio(){
   thead.innerHTML='';tbody.innerHTML='';
   const tc=cclVal>0?cclVal:mepVal>0?mepVal:1423,vis=portfolioCols.filter(c=>c.visible);
   const isUSD=(activeCurrency==='USD');
-  let cclAyer=tc;
-  if(historial.length>=2){const row=historial[historial.length-2];const cclH=toN(row['CCL']);if(cclH>0){cclAyer=cclH;}else{const tARS=toN(row['Total ARS']),tUSD=toN(row['Total USD']);if(tARS>0&&tUSD>0)cclAyer=tARS/tUSD;}}
+  const cclAyer=getCclAyer(tc);
   let data=activeFilter==='Todos'?portfolio:portfolio.filter(p=>p['Tipo']===activeFilter);
   document.getElementById('portfolio-count').textContent=data.length+' posiciones';
   vis.forEach(c=>{const s=portfolioSort.key===c.key;thead.innerHTML+=`<th class="${s?'sorted':''}" onclick="sortTable('portfolio','${c.key}')">${c.label} <span class="sort-arrow">${s?(portfolioSort.asc?'▲':'▼'):'▲'}</span></th>`;});
@@ -1862,7 +1907,7 @@ function renderPortfolio(){
       TotalARS:`<td class="mono"><span class="blur-val">${fmtARS(toN(p['Total ARS']))}</span></td>`,
       TotalUSD:`<td class="mono"><span class="blur-val">${fmtUSD(toN(p['Total USD']))}</span></td>`,
       PctPort:`<td class="mono">${(pct*100).toFixed(1)}%</td>`,
-      VarDia:(()=>{const pr=toN(p['Precio']),pa=toN(p['Precio Ayer']);if(!pa||p['Tipo']==='Cash')return'<td class="mono neu">—</td>';let v;if(isUSD&&p['Moneda']!=='USD'){const prU=tc>0?pr/tc:0,paU=cclAyer>0?pa/cclAyer:0;v=paU>0?(prU-paU)/paU:0;}else{v=pa>0?(pr-pa)/pa:0;}const vc=v>0?'pos':v<0?'neg':'neu';return`<td class="mono ${vc}">${v>0?'+':''}${(v*100).toFixed(2)}%</td>`})(),
+      VarDia:(()=>{const v=calcDailyReturn(p,isUSD,tc,cclAyer);if(v===null)return'<td class="mono neu">—</td>';const vc=v>0?'pos':v<0?'neg':'neu';return`<td class="mono ${vc}">${v>0?'+':''}${(v*100).toFixed(2)}%</td>`})(),
       RendUSD:`<td class="mono ${rc}">${rend>0?'+':''}${(rend*100).toFixed(1)}%</td>`
     };
     tbody.innerHTML+=`<tr class="${rowClass}">`+vis.map(c=>cm[c.key]).join('')+'</tr>';
@@ -1936,26 +1981,15 @@ function renderResumen(){
   // Yield diario
   // ARS: variación de precios en pesos
   // USD: usar CCL implícito del historial (Total ARS / Total USD de cada día)
-  const todayARS=portfolio.filter(p=>p['Tipo']!=='Cash').reduce((a,p)=>a+toN(p['Nominales'])*toN(p['Precio']),0);
-  const yesterARS=portfolio.filter(p=>p['Tipo']!=='Cash').reduce((a,p)=>a+toN(p['Nominales'])*(toN(p['Precio Ayer'])||toN(p['Precio'])),0);
-
-  // CCL de ayer: primero intenta el campo CCL, sino lo deriva de Total ARS / Total USD
-  let cclAyer=tc;
-  if(historial.length>=2){
-    const row=historial[historial.length-2];
-    const cclH=toN(row['CCL']);
-    if(cclH>0){
-      cclAyer=cclH;
-    } else {
-      const tARS=toN(row['Total ARS']), tUSD=toN(row['Total USD']);
-      if(tARS>0&&tUSD>0) cclAyer=tARS/tUSD;
-    }
-  }
+  const cclAyer=getCclAyer(tc);
+  const dailyVals=getDailyInvestmentValues(inv,tc,cclAyer);
+  const todayARS=dailyVals.hoyARS+(tc>0?dailyVals.hoyUSD*tc:0);
+  const yesterARS=dailyVals.ayerARS+(cclAyer>0?dailyVals.ayerUSD*cclAyer:0);
+  const todayUSD=dailyVals.hoyUSD+(tc>0?dailyVals.hoyARS/tc:0);
+  const yesterUSD=dailyVals.ayerUSD+(cclAyer>0?dailyVals.ayerARS/cclAyer:0);
 
   let yieldDaily, dailyGain;
   if(isUSD){
-    const todayUSD=tc>0?todayARS/tc:0;
-    const yesterUSD=cclAyer>0?yesterARS/cclAyer:0;
     yieldDaily=yesterUSD>0?(todayUSD-yesterUSD)/yesterUSD:0;
     dailyGain=todayUSD-yesterUSD;
   } else {
@@ -1975,15 +2009,7 @@ function renderResumen(){
   const invDia=portfolio.filter(p=>p['Tipo']!=='Cash'&&toN(p['Precio Ayer'])>0);
   let topG=null,topL=null;
   invDia.forEach(p=>{
-    const pr=toN(p['Precio']),pa=toN(p['Precio Ayer']);
-    let v;
-    if(isUSD&&p['Moneda']!=='USD'){
-      const prU=tc>0?pr/tc:0;
-      const paU=cclAyer>0?pa/cclAyer:0;
-      v=paU>0?(prU-paU)/paU:0;
-    } else {
-      v=pa>0?(pr-pa)/pa:0;
-    }
+    const v=calcDailyReturn(p,isUSD,tc,cclAyer)??0;
     p._varDia=v;
     if(!topG||v>topG._varDia) topG=p;
     if(!topL||v<topL._varDia) topL=p;
@@ -2371,18 +2397,7 @@ function renderHeatmap(){
   const isUSD=(activeCurrency==='USD');
   const cclHoy=cclVal>0?cclVal:mepVal>0?mepVal:1423;
 
-  // CCL de ayer: campo CCL del historial, o derivado de Total ARS / Total USD
-  let cclAyer=cclHoy;
-  if(historial.length>=2){
-    const row=historial[historial.length-2];
-    const cclH=toN(row['CCL']);
-    if(cclH>0){
-      cclAyer=cclH;
-    } else {
-      const tARS=toN(row['Total ARS']),tUSD=toN(row['Total USD']);
-      if(tARS>0&&tUSD>0) cclAyer=tARS/tUSD;
-    }
-  }
+  const cclAyer=getCclAyer(cclHoy);
 
   const items=portfolio
     .filter(p=>p['Tipo']!=='Cash'&&toN(p['Total USD'])>0)
@@ -2407,17 +2422,7 @@ function renderHeatmap(){
         }
       } else {
         // Variación diaria
-        if(!pa){
-          varVal=0;
-        } else if(isUSD&&!esUSDticker){
-          // USD/Día ticker ARS: convierte cada precio con su CCL del día
-          const prUSD=cclHoy>0?pr/cclHoy:0;
-          const paUSD=cclAyer>0?pa/cclAyer:0;
-          varVal=paUSD>0?(prUSD-paUSD)/paUSD:0;
-        } else {
-          // ARS/Día (cualquier ticker) o USD/Día ticker USD: variación directa
-          varVal=(pr-pa)/pa;
-        }
+        varVal=calcDailyReturn(p,isUSD,cclHoy,cclAyer)??0;
       }
       return {
         ticker:p['Ticker'],
