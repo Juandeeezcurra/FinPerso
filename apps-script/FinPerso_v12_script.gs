@@ -62,7 +62,7 @@ var CONFIG = {
 //  El frontend debe enviar ?token=<valor> (GET) o payload.token (POST)
 // ============================================================
 
-var ALLOWED_SHEETS  = ["Portfolio", "Operaciones", "Efectivo", "Historial", "Benchmark"];
+var ALLOWED_SHEETS  = ["Portfolio", "Operaciones", "Efectivo", "Historial", "Benchmark", "Valores"];
 var ORDENES_VALIDAS = ["Compra", "Venta"];
 var MONEDAS_VALIDAS = ["ARS", "USD"];
 var TIPOS_VALIDOS   = ["Equity", "Bonos", "Crypto", "Cash", "Agro"];
@@ -429,9 +429,20 @@ function _getPrecioYahoo(symbol) {
   }
   if (!previousClose) previousClose = meta.previousClose || null;
 
+  // precioEsDeHoy: true sólo si regularMarketTime cae en la fecha actual ARG.
+  // Si Yahoo aún no tiene precio de hoy (ej. antes de la apertura), regularMarketTime
+  // es del cierre anterior → precioEsDeHoy=false → no se debe pisar precioAyer.
+  var precioEsDeHoy = false;
+  if (meta.regularMarketTime) {
+    var hoyARG = Utilities.formatDate(new Date(), "America/Argentina/Buenos_Aires", "yyyy-MM-dd");
+    var precioARG = Utilities.formatDate(new Date(meta.regularMarketTime * 1000), "America/Argentina/Buenos_Aires", "yyyy-MM-dd");
+    precioEsDeHoy = (precioARG === hoyARG);
+  }
+
   return {
     precio: precio,
-    previousClose: previousClose
+    previousClose: previousClose,
+    precioEsDeHoy: precioEsDeHoy
   };
 }
 
@@ -548,7 +559,10 @@ function actualizarPrecios() {
     var t = tickerCol[i][0];
     if (t && precios[t] && precios[t].precio > 0) {
       port.getRange(CONFIG.filaInicio + i, CONFIG.colPrecio).setValue(precios[t].precio);
-      if (precios[t].previousClose > 0) {
+      // Sólo escribir precioAyer si el precio actual es realmente del día de hoy.
+      // Si Yahoo aún no tiene precio de hoy (ej. antes de la apertura), preservamos
+      // el T-1 que ya estaba en la celda — escribirlo ahora pisaría con T-2.
+      if (precios[t].previousClose > 0 && precios[t].precioEsDeHoy) {
         port.getRange(CONFIG.filaInicio + i, CONFIG.port.precioAyer).setValue(precios[t].previousClose);
       }
     } else if (t && preciosManuales[t] && preciosManuales[t] > 0) {
