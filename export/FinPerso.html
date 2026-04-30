@@ -15,7 +15,7 @@
   /* ── PRESERVED UTILITIES (not covered by design system below) ── */
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { overflow-x: hidden; }
-  body { min-height: 100vh; overflow-x: hidden; background: var(--bg); color: var(--text); }
+  body { min-height: 100vh; overflow-x: hidden; overflow-y: auto; background: var(--bg); color: var(--text); }
 
   /* Setup screen extras */
   #setup-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
@@ -228,7 +228,7 @@
     font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: var(--text-base);
     line-height: 1.5;
-    overscroll-behavior-y: none;
+    overscroll-behavior-y: auto;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     transition: background var(--dur-slow) var(--ease), color var(--dur-slow) var(--ease);
@@ -2145,6 +2145,7 @@ function renderCharts(){
 let evoMode='usd';
 let benchData={merval:null,sp500:null};
 let benchLoading=false;
+const EVO_PCT_START_DATE='2026-04-10';
 
 // ── CURRENCY TOGGLE GLOBAL ──
 function setCurrency(c){
@@ -2293,9 +2294,10 @@ function _externalFlowsByDate(isUSD,labels){
   return flows;
 }
 
-function _portfolioReturnPctSeries(isUSD){
-  const values=historial.map(h=>toN(isUSD?h['Total USD']:h['Total ARS']));
-  const labels=historial.map(h=>_parseDateKey(h['Fecha']||''));
+function _portfolioReturnPctSeries(isUSD,rows){
+  const source=rows||historial;
+  const values=source.map(h=>toN(isUSD?h['Total USD']:h['Total ARS']));
+  const labels=source.map(h=>_parseDateKey(h['Fecha']||''));
   const flows=_externalFlowsByDate(isUSD,labels);
   const firstFundingIndex=values.findIndex(v=>v>0);
   if(firstFundingIndex<0){
@@ -2365,28 +2367,31 @@ function renderEvoChart(){
   } else {
     // Modo % vs benchmarks: retorno encadenado, ajustado por aportes/retiros externos
     const isUSDpct=(activeCurrency==='USD');
-    const portPct=_portfolioReturnPctSeries(isUSDpct);
+    const pctRows=historial.filter(h=>_parseDateKey(h['Fecha']||'')>=EVO_PCT_START_DATE);
+    const pctLabels=pctRows.map(h=>h['Fecha']||'');
+    const pctSmallDs=pctRows.length>60;
+    const portPct=_portfolioReturnPctSeries(isUSDpct,pctRows);
     const startIndex=portPct._startIndex||0;
     const datasets=[{
       label:'Mi portfolio',data:portPct,borderColor:'#60a5fa',
       backgroundColor:'transparent',borderWidth:2.5,
-      pointRadius:smallDs?0:3,pointBackgroundColor:'#60a5fa',tension:0.3
+      pointRadius:pctSmallDs?0:3,pointBackgroundColor:'#60a5fa',tension:0.3
     }];
     const showMerval=document.getElementById('evo-chk-merval').checked;
     const showSP=document.getElementById('evo-chk-sp500').checked;
     if(showMerval&&benchData.merval){
-      const aligned=_alignBench(benchData.merval,evoLabels);
-      const sameCurrency=_benchmarkToCurrency(aligned,evoLabels,'ARS',isUSDpct?'USD':'ARS');
+      const aligned=_alignBench(benchData.merval,pctLabels);
+      const sameCurrency=_benchmarkToCurrency(aligned,pctLabels,'ARS',isUSDpct?'USD':'ARS');
       const norm=_normalizeFromIndex(sameCurrency,startIndex);
       if(norm) datasets.push({label:'MERVAL',data:norm,borderColor:'#fbbf24',backgroundColor:'transparent',borderWidth:1.5,borderDash:[5,3],pointRadius:0,tension:0.3});
     }
     if(showSP&&benchData.sp500){
-      const aligned=_alignBench(benchData.sp500,evoLabels);
-      const sameCurrency=_benchmarkToCurrency(aligned,evoLabels,'USD',isUSDpct?'USD':'ARS');
+      const aligned=_alignBench(benchData.sp500,pctLabels);
+      const sameCurrency=_benchmarkToCurrency(aligned,pctLabels,'USD',isUSDpct?'USD':'ARS');
       const norm=_normalizeFromIndex(sameCurrency,startIndex);
       if(norm) datasets.push({label:'S&P 500',data:norm,borderColor:'#a78bfa',backgroundColor:'transparent',borderWidth:1.5,borderDash:[5,3],pointRadius:0,tension:0.3});
     }
-    evoChart=new Chart(document.getElementById('chartEvo'),{type:'line',data:{labels:evoLabels,datasets},options:{responsive:true,maintainAspectRatio:false,
+    evoChart=new Chart(document.getElementById('chartEvo'),{type:'line',data:{labels:pctLabels,datasets},options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:true,labels:{color:tickColor,font:{size:10,family:'DM Mono'},boxWidth:12,padding:10}},
         tooltip:{callbacks:{label:ctx=>{const v=ctx.raw;return ctx.dataset.label+': '+(v!==null?(v>=0?'+':'')+v.toFixed(1)+'%':'N/D');}}}},
       scales:{
