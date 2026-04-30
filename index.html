@@ -2259,12 +2259,15 @@ function _cclForDate(dateKey){
 }
 
 function _flowBucketForDate(dateKey,labels){
-  if(!labels||!labels.length)return dateKey;
+  if(!labels||!labels.length)return '';
+  // Los aportes/retiros con fecha igual o anterior al primer snapshot son capital inicial.
   if(dateKey<=labels[0])return '';
   for(const label of labels){
-    if(label>=dateKey)return label;
+    // Sin hora real del movimiento, lo aplicamos al primer snapshot posterior.
+    // Evita que un ajuste cargado luego del snapshot del dia genere una caida falsa.
+    if(label>dateKey)return label;
   }
-  return labels[labels.length-1];
+  return '';
 }
 
 function _externalFlowsByDate(isUSD,labels){
@@ -2294,7 +2297,12 @@ function _portfolioReturnPctSeries(isUSD){
   const values=historial.map(h=>toN(isUSD?h['Total USD']:h['Total ARS']));
   const labels=historial.map(h=>_parseDateKey(h['Fecha']||''));
   const flows=_externalFlowsByDate(isUSD,labels);
-  const firstFundingIndex=Math.max(0,labels.findIndex(l=>(flows[l]||0)>0));
+  const firstFundingIndex=values.findIndex(v=>v>0);
+  if(firstFundingIndex<0){
+    const empty=values.map(()=>null);
+    empty._startIndex=0;
+    return empty;
+  }
   let index=1;
   const series=values.map((value,i)=>{
     if(i<firstFundingIndex)return null;
@@ -2302,9 +2310,9 @@ function _portfolioReturnPctSeries(isUSD){
     const prev=values[i-1];
     if(prev<=0||value<=0)return null;
     const flow=flows[labels[i]]||0;
-    const capitalBase=prev+flow;
-    if(capitalBase<=0)return null;
-    const daily=(value/capitalBase)-1;
+    const adjustedEnd=value-flow;
+    if(adjustedEnd<=0)return null;
+    const daily=(adjustedEnd/prev)-1;
     index*=1+daily;
     return (index-1)*100;
   });
