@@ -426,15 +426,25 @@ function _getPrecioYahoo(symbol) {
     if (closes[i] !== null && closes[i] !== undefined) validCloses.push(closes[i]);
   }
 
+  // Lógica de detección:
+  //   - Si regularMarketTime existe, es autoritativo (timestamp exacto del trade).
+  //   - Si no, probamos en este orden:
+  //       a) lastTimestamp del chart === hoy → seguro de hoy (chart al día).
+  //       b) si a falla (chart atrasado), heurística: precio ≠ lastClose
+  //          significa que regularMarketPrice es más fresco que el chart.
+  //   - Importante: a) que devuelva FALSE no concluye nada (solo que el chart
+  //     está atrasado), por eso b) actúa como fallback, no como exclusivo.
   var precioEsDeHoy = false;
   if (meta.regularMarketTime) {
     precioEsDeHoy = (_fechaARG(meta.regularMarketTime) === hoyARG);
-  } else if (timestamps.length > 0) {
-    precioEsDeHoy = (_fechaARG(timestamps[timestamps.length - 1]) === hoyARG);
-  } else if (precio && validCloses.length >= 1) {
-    var lastCloseChk = validCloses[validCloses.length - 1];
-    var epsChk = Math.max(0.01, Math.abs(lastCloseChk) * 0.0005);
-    precioEsDeHoy = (Math.abs(precio - lastCloseChk) > epsChk);
+  } else {
+    if (timestamps.length > 0 && _fechaARG(timestamps[timestamps.length - 1]) === hoyARG) {
+      precioEsDeHoy = true;
+    } else if (precio && validCloses.length >= 1) {
+      var lastCloseChk = validCloses[validCloses.length - 1];
+      var epsChk = Math.max(0.01, Math.abs(lastCloseChk) * 0.0005);
+      precioEsDeHoy = (Math.abs(precio - lastCloseChk) > epsChk);
+    }
   }
 
   // previousClose: priorizar meta.previousClose (Yahoo lo expone como cierre del
