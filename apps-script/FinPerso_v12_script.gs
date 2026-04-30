@@ -407,36 +407,40 @@ function _getPrecioYahoo(symbol) {
   var meta = result.meta;
   var precio = meta.regularMarketPrice || meta.previousClose || null;
 
-  // previousClose se deriva del historial de cierres comparando con regularMarketPrice.
-  // Si precio ≈ último cierre del historial → el historial ya incluye hoy → previousClose = penúltimo.
-  // Si precio ≠ último cierre del historial → meta es más fresca que el chart → previousClose = último.
-  // Así queda robusto frente a la latencia variable de Yahoo entre meta y chart.
-  var previousClose = null;
-  var timestamps = result.timestamp || [];
-  var closes = (result.indicators && result.indicators.quote && result.indicators.quote[0] && result.indicators.quote[0].close) || [];
-  var validCloses = [];
-  for (var i = 0; i < timestamps.length; i++) {
-    if (closes[i] !== null && closes[i] !== undefined) validCloses.push(closes[i]);
-  }
-  if (validCloses.length >= 1 && precio) {
-    var lastClose = validCloses[validCloses.length - 1];
-    var epsilon = Math.max(0.01, Math.abs(lastClose) * 0.0005); // tolerancia 0.05%
-    if (Math.abs(precio - lastClose) <= epsilon) {
-      if (validCloses.length >= 2) previousClose = validCloses[validCloses.length - 2];
-    } else {
-      previousClose = lastClose;
-    }
-  }
-  if (!previousClose) previousClose = meta.previousClose || null;
-
   // precioEsDeHoy: true sólo si regularMarketTime cae en la fecha actual ARG.
-  // Si Yahoo aún no tiene precio de hoy (ej. antes de la apertura), regularMarketTime
-  // es del cierre anterior → precioEsDeHoy=false → no se debe pisar precioAyer.
+  // Si Yahoo aún no tiene precio de hoy (antes de apertura/feriado), regularMarketTime
+  // es del último día hábil → precioEsDeHoy=false → no debe tocarse precioAyer.
   var precioEsDeHoy = false;
   if (meta.regularMarketTime) {
     var hoyARG = Utilities.formatDate(new Date(), "America/Argentina/Buenos_Aires", "yyyy-MM-dd");
     var precioARG = Utilities.formatDate(new Date(meta.regularMarketTime * 1000), "America/Argentina/Buenos_Aires", "yyyy-MM-dd");
     precioEsDeHoy = (precioARG === hoyARG);
+  }
+
+  // previousClose: usar meta.previousClose cuando precio es de hoy (Yahoo lo expone
+  // explícitamente como cierre del día hábil anterior al regularMarketPrice).
+  // Fallback al historial sólo si meta.previousClose no está disponible — pero ojo,
+  // el chart puede estar 1+ día desactualizado vs meta, por eso meta es la fuente primaria.
+  var previousClose = null;
+  if (precioEsDeHoy) {
+    previousClose = meta.previousClose || null;
+    if (!previousClose) {
+      // Fallback: derivar del historial.
+      var closes = (result.indicators && result.indicators.quote && result.indicators.quote[0] && result.indicators.quote[0].close) || [];
+      var validCloses = [];
+      for (var i = 0; i < closes.length; i++) {
+        if (closes[i] !== null && closes[i] !== undefined) validCloses.push(closes[i]);
+      }
+      if (validCloses.length >= 1 && precio) {
+        var lastClose = validCloses[validCloses.length - 1];
+        var epsilon = Math.max(0.01, Math.abs(lastClose) * 0.0005);
+        if (Math.abs(precio - lastClose) <= epsilon) {
+          if (validCloses.length >= 2) previousClose = validCloses[validCloses.length - 2];
+        } else {
+          previousClose = lastClose;
+        }
+      }
+    }
   }
 
   return {
