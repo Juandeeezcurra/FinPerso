@@ -406,9 +406,10 @@ function _getPrecioYahoo(symbol) {
   if (!result || !result.meta) return null;
   var meta = result.meta;
   var precio = meta.regularMarketPrice || meta.previousClose || null;
-  // Yahoo expone el cierre del día hábil anterior como previousClose o
-  // chartPreviousClose según el símbolo (META.BA solo trae chartPreviousClose).
-  var yahooPrevClose = meta.previousClose || meta.chartPreviousClose || null;
+  // meta.previousClose es el cierre real del dia habil anterior.
+  // meta.chartPreviousClose NO sirve para esto con range=5d: es el cierre
+  // anterior al rango del chart, que puede quedar varios dias atras.
+  var yahooPrevClose = meta.previousClose || null;
 
   // Detectar si precio es de hoy ARG con múltiples señales (algunos símbolos
   // como META.BA no devuelven regularMarketTime). Orden de confianza:
@@ -425,8 +426,26 @@ function _getPrecioYahoo(symbol) {
   var timestamps = result.timestamp || [];
   var closes = (result.indicators && result.indicators.quote && result.indicators.quote[0] && result.indicators.quote[0].close) || [];
   var validCloses = [];
+  var datedCloses = [];
   for (var i = 0; i < closes.length; i++) {
-    if (closes[i] !== null && closes[i] !== undefined) validCloses.push(closes[i]);
+    if (closes[i] !== null && closes[i] !== undefined) {
+      validCloses.push(closes[i]);
+      if (timestamps[i]) {
+        datedCloses.push({
+          fecha: _fechaARG(timestamps[i]),
+          close: closes[i]
+        });
+      }
+    }
+  }
+
+  function _previousCloseFromChart() {
+    if (datedCloses.length === 0) return null;
+    var last = datedCloses[datedCloses.length - 1];
+    if (last.fecha === hoyARG) {
+      return datedCloses.length >= 2 ? datedCloses[datedCloses.length - 2].close : null;
+    }
+    return last.close;
   }
 
   // Detección de precioEsDeHoy: cualquier señal positiva basta.
@@ -434,7 +453,7 @@ function _getPrecioYahoo(symbol) {
   //   1) regularMarketTime de hoy
   //   2) último timestamp del chart de hoy
   //   3) precio ≠ último cierre del chart con margen >0.5%
-  //   4) precio ≠ meta.previousClose con margen >0.5%
+  //   4) precio != meta.previousClose con margen >0.5%
   // Las señales 3 y 4 cubren el caso donde Yahoo devuelve respuesta pobre
   // (sin regularMarketTime, sin chart) pero el precio es claramente fresco.
   var precioEsDeHoy = false;
@@ -452,19 +471,20 @@ function _getPrecioYahoo(symbol) {
     if (Math.abs(precio - yahooPrevClose) > Math.max(0.01, Math.abs(yahooPrevClose) * 0.005)) precioEsDeHoy = true;
   }
 
-  // previousClose: priorizar yahooPrevClose (cubre meta.previousClose y
-  // meta.chartPreviousClose). Fallback al chart sólo si Yahoo no expone ninguno.
-  var previousClose = null;
-  if (precioEsDeHoy) {
-    previousClose = yahooPrevClose;
-    if (!previousClose && validCloses.length >= 1 && precio) {
-      var lastClose = validCloses[validCloses.length - 1];
-      var epsilon = Math.max(0.01, Math.abs(lastClose) * 0.0005);
-      if (Math.abs(precio - lastClose) <= epsilon) {
-        if (validCloses.length >= 2) previousClose = validCloses[validCloses.length - 2];
-      } else {
-        previousClose = lastClose;
-      }
+  // previousClose: priorizar meta.previousClose. Si Yahoo no lo expone,
+  // derivarlo siempre del chart diario respetando fechas:
+  // - si la ultima vela es de hoy, ayer es la vela anterior
+  // - si la ultima vela no es de hoy, esa ultima vela es el ultimo cierre
+  // Esto cubre simbolos como META.BA/S29Y6.BA, que pueden traer precio actual
+  // sin meta.previousClose ni regularMarketTime.
+  var previousClose = yahooPrevClose || _previousCloseFromChart();
+  if (!previousClose && validCloses.length >= 1 && precio) {
+    var lastClose = validCloses[validCloses.length - 1];
+    var epsilon = Math.max(0.01, Math.abs(lastClose) * 0.0005);
+    if (Math.abs(precio - lastClose) <= epsilon) {
+      if (validCloses.length >= 2) previousClose = validCloses[validCloses.length - 2];
+    } else {
+      previousClose = lastClose;
     }
   }
 
@@ -588,10 +608,10 @@ function actualizarPrecios() {
     var t = tickerCol[i][0];
     if (t && precios[t] && precios[t].precio > 0) {
       port.getRange(CONFIG.filaInicio + i, CONFIG.colPrecio).setValue(precios[t].precio);
-      // Sólo escribir precioAyer si el precio actual es realmente del día de hoy.
-      // Si Yahoo aún no tiene precio de hoy (ej. antes de la apertura), preservamos
-      // el T-1 que ya estaba en la celda — escribirlo ahora pisaría con T-2.
-      if (precios[t].previousClose > 0 && precios[t].precioEsDeHoy) {
+      // Escribir precioAyer si Yahoo expone previousClose o si pudimos derivarlo
+      // por fecha desde el chart diario. Antes de la apertura, el fallback devuelve
+      // la ultima vela disponible (T-1), no la vela anterior a esa (T-2).
+      if (precios[t].previousClose > 0) {
         port.getRange(CONFIG.filaInicio + i, CONFIG.port.precioAyer).setValue(precios[t].previousClose);
       }
     } else if (t && preciosManuales[t] && preciosManuales[t] > 0) {
