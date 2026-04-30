@@ -406,6 +406,9 @@ function _getPrecioYahoo(symbol) {
   if (!result || !result.meta) return null;
   var meta = result.meta;
   var precio = meta.regularMarketPrice || meta.previousClose || null;
+  // Yahoo expone el cierre del día hábil anterior como previousClose o
+  // chartPreviousClose según el símbolo (META.BA solo trae chartPreviousClose).
+  var yahooPrevClose = meta.previousClose || meta.chartPreviousClose || null;
 
   // Detectar si precio es de hoy ARG con múltiples señales (algunos símbolos
   // como META.BA no devuelven regularMarketTime). Orden de confianza:
@@ -445,15 +448,15 @@ function _getPrecioYahoo(symbol) {
     var lc = validCloses[validCloses.length - 1];
     if (Math.abs(precio - lc) > Math.max(0.01, Math.abs(lc) * 0.005)) precioEsDeHoy = true;
   }
-  if (!precioEsDeHoy && precio && meta.previousClose) {
-    var pc = meta.previousClose;
-    if (Math.abs(precio - pc) > Math.max(0.01, Math.abs(pc) * 0.005)) precioEsDeHoy = true;
+  if (!precioEsDeHoy && precio && yahooPrevClose) {
+    if (Math.abs(precio - yahooPrevClose) > Math.max(0.01, Math.abs(yahooPrevClose) * 0.005)) precioEsDeHoy = true;
   }
-  // previousClose: priorizar meta.previousClose (Yahoo lo expone como cierre del
-  // día hábil anterior al regularMarketPrice). Fallback al chart sólo si falta.
+
+  // previousClose: priorizar yahooPrevClose (cubre meta.previousClose y
+  // meta.chartPreviousClose). Fallback al chart sólo si Yahoo no expone ninguno.
   var previousClose = null;
   if (precioEsDeHoy) {
-    previousClose = meta.previousClose || null;
+    previousClose = yahooPrevClose;
     if (!previousClose && validCloses.length >= 1 && precio) {
       var lastClose = validCloses[validCloses.length - 1];
       var epsilon = Math.max(0.01, Math.abs(lastClose) * 0.0005);
@@ -463,16 +466,6 @@ function _getPrecioYahoo(symbol) {
         previousClose = lastClose;
       }
     }
-  }
-
-  if (!previousClose) {
-    Logger.log("DEBUG " + symbol + ": previousClose=null. " +
-               "precioEsDeHoy=" + precioEsDeHoy + ", " +
-               "regularMarketTime=" + meta.regularMarketTime + ", " +
-               "timestamps=" + timestamps.length + ", " +
-               "validCloses=" + validCloses.length + ", " +
-               "precio=" + precio + ", meta.previousClose=" + meta.previousClose + ", " +
-               "meta.chartPreviousClose=" + meta.chartPreviousClose);
   }
 
   return {
