@@ -2289,7 +2289,9 @@ function _portfolioReturnPctSeries(isUSD){
     const prev=values[i-1];
     if(prev<=0||value<=0)return null;
     const flow=flows[labels[i]]||0;
-    const daily=((value-flow)/prev)-1;
+    const capitalBase=prev+flow;
+    if(capitalBase<=0)return null;
+    const daily=(value/capitalBase)-1;
     index*=1+daily;
     return (index-1)*100;
   });
