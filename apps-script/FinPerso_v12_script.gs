@@ -407,38 +407,48 @@ function _getPrecioYahoo(symbol) {
   var meta = result.meta;
   var precio = meta.regularMarketPrice || meta.previousClose || null;
 
-  // precioEsDeHoy: true sólo si regularMarketTime cae en la fecha actual ARG.
-  // Si Yahoo aún no tiene precio de hoy (antes de apertura/feriado), regularMarketTime
-  // es del último día hábil → precioEsDeHoy=false → no debe tocarse precioAyer.
-  var precioEsDeHoy = false;
-  if (meta.regularMarketTime) {
-    var hoyARG = Utilities.formatDate(new Date(), "America/Argentina/Buenos_Aires", "yyyy-MM-dd");
-    var precioARG = Utilities.formatDate(new Date(meta.regularMarketTime * 1000), "America/Argentina/Buenos_Aires", "yyyy-MM-dd");
-    precioEsDeHoy = (precioARG === hoyARG);
+  // Detectar si precio es de hoy ARG con múltiples señales (algunos símbolos
+  // como META.BA no devuelven regularMarketTime). Orden de confianza:
+  //   1) meta.regularMarketTime → fecha exacta del último trade
+  //   2) último timestamp del chart → fecha de la última vela
+  //   3) si ninguno, comparar precio vs último cierre del chart:
+  //      - precio ≠ lastClose → meta es más fresca que chart → asumir hoy
+  //      - precio ≈ lastClose → no podemos saber; conservador: asumir NO hoy
+  var hoyARG = Utilities.formatDate(new Date(), "America/Argentina/Buenos_Aires", "yyyy-MM-dd");
+  function _fechaARG(epochSec) {
+    return Utilities.formatDate(new Date(epochSec * 1000), "America/Argentina/Buenos_Aires", "yyyy-MM-dd");
   }
 
-  // previousClose: usar meta.previousClose cuando precio es de hoy (Yahoo lo expone
-  // explícitamente como cierre del día hábil anterior al regularMarketPrice).
-  // Fallback al historial sólo si meta.previousClose no está disponible — pero ojo,
-  // el chart puede estar 1+ día desactualizado vs meta, por eso meta es la fuente primaria.
+  var timestamps = result.timestamp || [];
+  var closes = (result.indicators && result.indicators.quote && result.indicators.quote[0] && result.indicators.quote[0].close) || [];
+  var validCloses = [];
+  for (var i = 0; i < closes.length; i++) {
+    if (closes[i] !== null && closes[i] !== undefined) validCloses.push(closes[i]);
+  }
+
+  var precioEsDeHoy = false;
+  if (meta.regularMarketTime) {
+    precioEsDeHoy = (_fechaARG(meta.regularMarketTime) === hoyARG);
+  } else if (timestamps.length > 0) {
+    precioEsDeHoy = (_fechaARG(timestamps[timestamps.length - 1]) === hoyARG);
+  } else if (precio && validCloses.length >= 1) {
+    var lastCloseChk = validCloses[validCloses.length - 1];
+    var epsChk = Math.max(0.01, Math.abs(lastCloseChk) * 0.0005);
+    precioEsDeHoy = (Math.abs(precio - lastCloseChk) > epsChk);
+  }
+
+  // previousClose: priorizar meta.previousClose (Yahoo lo expone como cierre del
+  // día hábil anterior al regularMarketPrice). Fallback al chart sólo si falta.
   var previousClose = null;
   if (precioEsDeHoy) {
     previousClose = meta.previousClose || null;
-    if (!previousClose) {
-      // Fallback: derivar del historial.
-      var closes = (result.indicators && result.indicators.quote && result.indicators.quote[0] && result.indicators.quote[0].close) || [];
-      var validCloses = [];
-      for (var i = 0; i < closes.length; i++) {
-        if (closes[i] !== null && closes[i] !== undefined) validCloses.push(closes[i]);
-      }
-      if (validCloses.length >= 1 && precio) {
-        var lastClose = validCloses[validCloses.length - 1];
-        var epsilon = Math.max(0.01, Math.abs(lastClose) * 0.0005);
-        if (Math.abs(precio - lastClose) <= epsilon) {
-          if (validCloses.length >= 2) previousClose = validCloses[validCloses.length - 2];
-        } else {
-          previousClose = lastClose;
-        }
+    if (!previousClose && validCloses.length >= 1 && precio) {
+      var lastClose = validCloses[validCloses.length - 1];
+      var epsilon = Math.max(0.01, Math.abs(lastClose) * 0.0005);
+      if (Math.abs(precio - lastClose) <= epsilon) {
+        if (validCloses.length >= 2) previousClose = validCloses[validCloses.length - 2];
+      } else {
+        previousClose = lastClose;
       }
     }
   }
