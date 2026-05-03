@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FinPerso">
+<title>FinPerso</title>
+<link rel="icon" type="image/png" href="finperso-icon.png">
+<link rel="apple-touch-icon" href="finperso-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  /* ── THEME VARIABLES ── */
+  :root, [data-theme="dark"] {
+    --bg: #0e0f11; --bg2: #16181c; --bg3: #1e2026;
+    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
+    --text: #f0f0f0; --muted: #888; --muted2: #555;
+    --green: #4ade80; --red: #f87171; --blue: #60a5fa;
+    --amber: #fbbf24; --accent: #a78bfa;
+    --radius: 12px; --radius-sm: 8px;
+    --row-pos: rgba(74,222,128,0.04); --row-neg: rgba(248,113,113,0.04);
+  }
+  [data-theme="light"] {
+    --bg: #f5f5f7; --bg2: #ffffff; --bg3: #eeeef0;
+    --border: rgba(0,0,0,0.08); --border2: rgba(0,0,0,0.12);
+    --text: #1a1a1a; --muted: #666; --muted2: #999;
+    --green: #16a34a; --red: #dc2626; --blue: #2563eb;
+    --amber: #d97706; --accent: #7c3aed;
+    --row-pos: rgba(22,163,74,0.05); --row-neg: rgba(220,38,38,0.05);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; overflow-x: hidden; transition: background 0.3s, color 0.3s; }
+  body { min-height: 100vh; overflow-x: hidden; }
+
+  /* ── SETUP ── */
+  #setup-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .setup-card { background: var(--bg2); border: 1px solid var(--border2); border-radius: 16px; padding: 40px; max-width: 480px; width: 100%; }
+  .setup-logo { font-size: 28px; font-weight: 600; letter-spacing: -0.03em; margin-bottom: 6px; }
+  .setup-sub { font-size: 13px; color: var(--muted); margin-bottom: 32px; }
+  .setup-label { font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; display: block; font-family: 'DM Mono', monospace; }
+  .setup-input { width: 100%; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 11px 14px; color: var(--text); font-size: 13px; font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.15s; }
+  .setup-input:focus { border-color: var(--accent); }
+  .setup-input::placeholder { color: var(--muted2); }
+  .setup-hint { font-size: 11px; color: var(--muted2); margin-top: 6px; margin-bottom: 24px; line-height: 1.5; }
+  .setup-btn { width: 100%; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); padding: 12px; font-size: 14px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+  .setup-btn:hover { opacity: 0.85; }
+  .setup-error { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 12px; color: var(--red); margin-top: 12px; display: none; }
+  .setup-steps { margin-top: 28px; border-top: 1px solid var(--border); padding-top: 24px; }
+  .setup-steps-title { font-size: 11px; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; font-family: 'DM Mono', monospace; }
+  .step { display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-start; }
+  .step-num { width: 20px; height: 20px; border-radius: 50%; background: var(--bg3); border: 1px solid var(--border2); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 500; color: var(--muted); flex-shrink: 0; }
+  .step-text { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .step-text code { font-family: 'DM Mono', monospace; font-size: 11px; background: var(--bg3); padding: 1px 5px; border-radius: 3px; color: var(--accent); }
+
+  /* ── LAYOUT ── */
+  #app { display: none; }
+  .layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+  .sidebar { background: var(--bg2); border-right: 1px solid var(--border); padding: 28px 0; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
+  .logo { padding: 0 24px 24px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+  .logo-text { font-size: 15px; font-weight: 600; letter-spacing: -0.02em; }
+  .logo-sub { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-top: 2px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 24px; cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 500; transition: all 0.15s; border-left: 2px solid transparent; user-select: none; }
+  .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+  .nav-item.active { color: var(--text); border-left-color: var(--accent); background: rgba(167,139,250,0.06); }
+  .nav-icon { width: 16px; text-align: center; font-size: 13px; }
+
+  /* ── SIDEBAR FOOTER ── */
+  .sidebar-footer { margin-top: auto; padding: 16px 24px 0; border-top: 1px solid var(--border); }
+  .tc-widget, .cash-widget { background: var(--bg3); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 10px; }
+  .tc-title, .cash-title { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; font-family: 'DM Mono', monospace; }
+  .tc-row, .cash-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .tc-label, .cash-label { font-size: 11px; color: var(--muted); }
+  .tc-val { font-size: 13px; font-weight: 500; font-family: 'DM Mono', monospace; color: var(--amber); }
+  .cash-val { font-size: 13px; font-weight: 500; font-family: 'DM Mono', monospace; color: var(--green); }
+  .tc-updated { font-size: 10px; color: var(--muted2); margin-top: 6px; }
+  .sidebar-actions { display: flex; gap: 6px; }
+  .reset-btn, .theme-btn { flex: 1; background: transparent; border: 1px solid var(--border); color: var(--muted2); border-radius: var(--radius-sm); padding: 6px; font-size: 11px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; text-align: center; }
+  .reset-btn:hover { color: var(--red); border-color: rgba(248,113,113,0.4); }
+  .theme-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ── MAIN ── */
+  .main { padding: 32px 36px; background: var(--bg); min-width: 0; }
+  .page-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 8px; }
+  .page-title { font-size: 24px; font-weight: 600; letter-spacing: -0.03em; }
+  .page-title-gain { font-size: 14px; font-weight: 500; margin-left: 10px; }
+  .page-date { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .last-updated { font-size: 10px; color: var(--muted2); font-family: 'DM Mono', monospace; }
+  .refresh-btn { background: transparent; border: 1px solid var(--border2); color: var(--muted); border-radius: var(--radius-sm); padding: 5px 12px; font-size: 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
+  .refresh-btn:hover { color: var(--text); border-color: var(--accent); }
+
+  .section { display: none; } .section.active { display: block; }
+  .loading { text-align: center; padding: 60px; color: var(--muted); font-size: 13px; }
+  .spinner { width: 24px; height: 24px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── PULL TO REFRESH ── */
+  .pull-indicator { display: none; text-align: center; padding: 12px; color: var(--accent); font-size: 12px; font-family: 'DM Mono', monospace; }
+  .pull-indicator.visible { display: block; }
+
+  /* ── METRICS ── */
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  .metric-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; }
+  .metric-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; font-family: 'DM Mono', monospace; }
+  .metric-value { font-size: 22px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; }
+  .metric-sub { font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+  /* ── CHARTS ── */
+  .chart-row { display: grid; grid-template-columns: 1fr 1.6fr; gap: 14px; margin-bottom: 24px; }
+  .chart-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .chart-title { font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; font-family: 'DM Mono', monospace; }
+  .chart-sub { font-size: 11px; color: var(--muted2); margin-bottom: 12px; }
+  .chart-wrap { position: relative; width: 100%; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ── TABLES ── */
+  .table-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 24px; }
+  .table-header-row { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  .table-title { font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-family: 'DM Mono', monospace; }
+  .table-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .table-ctrl-btn { background: var(--bg3); border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 5px 10px; font-size: 11px; cursor: pointer; font-family: 'DM Mono', monospace; transition: all 0.15s; }
+  .table-ctrl-btn:hover { color: var(--text); border-color: var(--accent); }
+  .table-ctrl-btn.active { color: var(--accent); border-color: var(--accent); }
+  .filter-bar, .search-bar { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 20px; border-bottom: 1px solid var(--border); background: var(--bg3); }
+  .filter-bar.hidden, .search-bar.hidden { display: none; }
+  .filter-chip { background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; font-size: 11px; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .filter-chip:hover, .filter-chip.active { color: var(--accent); border-color: var(--accent); }
+  .search-input { flex: 1; background: var(--bg2); border: 1px solid var(--border2); border-radius: 6px; padding: 6px 12px; color: var(--text); font-size: 12px; font-family: 'DM Sans', sans-serif; outline: none; min-width: 120px; }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--muted2); }
+  .col-config-panel { display: none; padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--bg3); flex-wrap: wrap; gap: 8px; }
+  .col-config-panel.open { display: flex; }
+  .col-toggle { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); cursor: pointer; user-select: none; padding: 3px 8px; border-radius: 4px; border: 1px solid transparent; transition: all 0.15s; }
+  .col-toggle:hover { border-color: var(--border2); }
+  .col-toggle input { accent-color: var(--accent); }
+  .col-toggle.dragging { opacity: 0.5; border-color: var(--accent); }
+  .col-toggle.drag-over { border-color: var(--accent); background: rgba(167,139,250,0.1); }
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 600px; }
+  thead th { padding: 10px 20px; text-align: left; font-size: 10px; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.07em; font-weight: 500; border-bottom: 1px solid var(--border); background: var(--bg3); white-space: nowrap; cursor: pointer; user-select: none; transition: color 0.15s; }
+  thead th:hover { color: var(--text); }
+  thead th .sort-arrow { font-size: 9px; margin-left: 3px; opacity: 0.4; }
+  thead th.sorted .sort-arrow { opacity: 1; color: var(--accent); }
+  tbody td { padding: 11px 20px; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: rgba(255,255,255,0.02); }
+  .mono { font-family: 'DM Mono', monospace; font-size: 12px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; font-family: 'DM Mono', monospace; white-space: nowrap; }
+  .pos { color: var(--green); } .neg { color: var(--red); } .neu { color: var(--muted); }
+  .conc-alert { display: inline-block; font-size: 9px; background: rgba(248,113,113,0.15); color: var(--red); padding: 1px 5px; border-radius: 3px; margin-left: 4px; font-family: 'DM Mono', monospace; cursor: help; }
+  .export-btn { background: var(--bg3); border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 5px 10px; font-size: 11px; cursor: pointer; font-family: 'DM Mono', monospace; transition: all 0.15s; }
+  .export-btn:hover { color: var(--text); border-color: var(--accent); }
+
+  /* ── CHAT ── */
+  .chat-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .chat-msgs { height: 360px; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+  .chat-msgs::-webkit-scrollbar { width: 4px; }
+  .chat-msgs::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  .msg-user { align-self: flex-end; background: rgba(167,139,250,0.12); border: 1px solid rgba(167,139,250,0.2); color: var(--text); padding: 9px 14px; border-radius: 12px 12px 2px 12px; font-size: 13px; max-width: 75%; line-height: 1.5; }
+  .msg-ai { align-self: flex-start; background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 9px 14px; border-radius: 12px 12px 12px 2px; font-size: 13px; max-width: 82%; line-height: 1.6; white-space: pre-wrap; }
+  .msg-thinking { color: var(--muted); font-style: italic; }
+  .chat-footer { border-top: 1px solid var(--border); padding: 14px 20px; display: flex; gap: 10px; background: var(--bg3); }
+  .chat-footer input { flex: 1; background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; padding: 9px 14px; color: var(--text); font-size: 13px; font-family: 'DM Sans', sans-serif; outline: none; }
+  .chat-footer input:focus { border-color: var(--accent); }
+  .chat-footer input::placeholder { color: var(--muted2); }
+  .btn { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 9px 18px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+  .btn:hover { opacity: 0.85; } .btn:disabled { opacity: 0.4; cursor: default; }
+  .suggestions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .suggestion { background: var(--bg3); border: 1px solid var(--border2); border-radius: 20px; padding: 5px 12px; font-size: 11px; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .suggestion:hover { color: var(--text); border-color: var(--accent); }
+  .ia-key-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .ia-key-row input { flex: 1; background: var(--bg3); border: 1px solid var(--border2); border-radius: 8px; padding: 8px 12px; color: var(--text); font-size: 12px; font-family: 'DM Mono', monospace; outline: none; }
+  .ia-key-row input:focus { border-color: var(--accent); }
+  .ia-key-row input::placeholder { color: var(--muted2); }
+  .ia-key-btn { background: var(--bg3); border: 1px solid var(--border2); color: var(--muted); border-radius: 8px; padding: 8px 14px; font-size: 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+  .ia-key-btn:hover { color: var(--text); border-color: var(--accent); }
+  .ia-notice { font-size: 11px; color: var(--muted2); margin-bottom: 12px; }
+
+  /* ── FAB + MODAL ── */
+  .fab { position: fixed; bottom: 28px; right: 28px; width: 60px; height: 60px; background: var(--accent); border: none; border-radius: 16px; color: #fff; font-size: 32px; line-height: 1; cursor: pointer; box-shadow: 0 4px 24px rgba(167,139,250,0.45); z-index: 100; display: none; transition: transform 0.15s; }
+  .fab:hover { transform: scale(1.08); }
+  .fab:active { transform: scale(0.95); }
+  #app .fab { display: flex; align-items: center; justify-content: center; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 200; display: none; align-items: flex-end; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal-sheet { background: var(--bg2); border: 1px solid var(--border2); border-radius: 18px 18px 0 0; width: 100%; max-width: 520px; max-height: 88vh; overflow-y: auto; padding: 20px 20px 28px; animation: slideUp 0.25s ease-out; }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .modal-title { font-size: 16px; font-weight: 600; }
+  .modal-close { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; color: var(--muted); width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; }
+  .modal-close:hover { color: var(--text); border-color: var(--accent); }
+  @media (min-width: 769px) { .modal-overlay { align-items: center; padding: 24px; } .modal-sheet { border-radius: 18px; max-height: 80vh; } }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1 / -1; }
+  .form-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-family: 'DM Mono', monospace; }
+  .form-input, .form-select { width: 100%; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 10px 12px; color: var(--text); font-size: 13px; font-family: 'DM Sans', sans-serif; outline: none; -webkit-appearance: none; }
+  .form-select { cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+  .form-select option { background: var(--bg2); color: var(--text); }
+  .form-input:focus, .form-select:focus { border-color: var(--accent); }
+  .form-input::placeholder { color: var(--muted2); }
+  .form-success { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.3); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 13px; color: var(--green); margin-top: 14px; display: none; }
+  .form-error { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 13px; color: var(--red); margin-top: 14px; display: none; }
+  .error-banner { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 13px; color: var(--red); margin-bottom: 16px; display: none; }
+
+  /* ── MOBILE ── */
+  @media (max-width: 768px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { position: fixed; bottom: 0; left: 0; right: 0; top: auto; height: auto; flex-direction: row; flex-wrap: nowrap; padding: 0 0 env(safe-area-inset-bottom, 0px) 0; gap: 0; z-index: 90; background: var(--bg2); border-right: none; border-top: 1px solid var(--border2); justify-content: stretch; box-shadow: 0 -4px 24px rgba(0,0,0,0.5); }
+    .logo { display: none; } .sidebar-footer { display: none; }
+    .nav-item { flex: 1; flex-direction: column; align-items: center; justify-content: center; padding: 12px 4px 10px; gap: 5px; border-left: none; font-size: 11px; color: var(--muted2); text-align: center; }
+    .nav-item .nav-icon { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: transparent; border-radius: 10px; transition: background 0.15s; }
+    .nav-item.active { color: var(--text); border-left-color: transparent; background: transparent; }
+    .nav-item.active .nav-icon { background: rgba(167,139,250,0.15); color: var(--accent); }
+    .nav-item:hover { background: transparent; }
+    .main { padding: calc(20px + env(safe-area-inset-top, 0px)) 20px 120px; }
+    .page-header { margin-bottom: 24px; }
+    .page-title { font-size: 32px; font-weight: 700; letter-spacing: -0.04em; }
+    .page-date { font-size: 14px; }
+    .refresh-btn { font-size: 14px; padding: 8px 16px; }
+    .metrics { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .metric-card { padding: 16px 18px; }
+    .metric-label { font-size: 12px; margin-bottom: 10px; }
+    .metric-value { font-size: 24px; }
+    .metric-sub { font-size: 13px; margin-top: 6px; }
+    .chart-row { grid-template-columns: 1fr; }
+    .chart-title { font-size: 13px; }
+    .table-title { font-size: 13px; }
+    thead th { font-size: 11px; }
+    tbody td { font-size: 14px; padding: 13px 20px; }
+    .fab { bottom: calc(100px + env(safe-area-inset-bottom, 0px)); right: 20px; width: 64px; height: 64px; font-size: 36px; border-radius: 18px; }
+    .pull-indicator { font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="setup-screen">
+  <div class="setup-card">
+    <div class="setup-logo">FinPerso</div>
+    <div class="setup-sub">Conectá tu Google Sheets para empezar</div>
+    <label class="setup-label">URL de tu Apps Script</label>
+    <input class="setup-input" id="setup-url" type="text" placeholder="https://script.google.com/macros/s/..." />
+    <div class="setup-hint">La encontrás en tu Apps Script → Implementar → Gestionar implementaciones → copiar la URL.</div>
+    <button class="setup-btn" onclick="guardarConfig()">Conectar y abrir dashboard</button>
+    <div class="setup-error" id="setup-error"></div>
+    <div class="setup-steps">
+      <div class="setup-steps-title">Cómo obtener la URL</div>
+      <div class="step"><div class="step-num">1</div><div class="step-text">Abrí tu Google Sheets → <code>Extensiones</code> → <code>Apps Script</code></div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-text">Pegá el código y guardá</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-text">Ejecutá <code>setupInicial()</code> una sola vez</div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-text"><code>Implementar</code> → <code>Nueva implementación</code> → <code>Aplicación web</code> → acceso <code>Cualquier persona</code></div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-text">Copiá la URL y pegala arriba</div></div>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+<div class="layout">
+  <aside class="sidebar">
+    <div class="logo"><div class="logo-text">FinPerso</div><div class="logo-sub" id="logo-date"></div></div>
+    <div class="nav-item active" onclick="showSection('resumen',this)"><span class="nav-icon">◈</span> Resumen</div>
+    <div class="nav-item" onclick="showSection('portfolio',this)"><span class="nav-icon">◉</span> Posiciones</div>
+    <div class="nav-item" onclick="showSection('operaciones',this)"><span class="nav-icon">◫</span> Operaciones</div>
+    <div class="nav-item" onclick="showSection('ia',this)"><span class="nav-icon">◎</span> Asistente IA</div>
+    <div class="sidebar-footer">
+      <div class="cash-widget">
+        <div class="cash-title">Saldo cash</div>
+        <div class="cash-row"><span class="cash-label">ARS</span><span class="cash-val" id="cash-ars">—</span></div>
+        <div class="cash-row"><span class="cash-label">USD</span><span class="cash-val" id="cash-usd">—</span></div>
+      </div>
+      <div class="tc-widget">
+        <div class="tc-title">Tipo de cambio</div>
+        <div class="tc-row"><span class="tc-label">MEP</span><span class="tc-val" id="mep-val">—</span></div>
+        <div class="tc-row"><span class="tc-label">CCL</span><span class="tc-val" id="ccl-val">—</span></div>
+        <div class="tc-updated" id="tc-updated"></div>
+      </div>
+      <div class="email-widget" style="margin-bottom:10px">
+        <div class="tc-title">Email reporte diario</div>
+        <div style="display:flex;gap:6px">
+          <input type="email" id="email-input" class="setup-input" style="font-size:11px;padding:7px 10px" placeholder="tu@email.com" />
+          <button class="theme-btn" style="flex:0 0 auto;padding:7px 10px" onclick="guardarEmail()">✓</button>
+        </div>
+        <div id="email-status" style="font-size:10px;color:var(--muted2);margin-top:4px;display:none"></div>
+      </div>
+      <button class="theme-btn" style="width:100%" onclick="toggleTheme()">◐ Tema</button>
+    </div>
+  </aside>
+
+  <main class="main" id="main-content">
+    <div class="pull-indicator" id="pull-indicator">↓ Soltar para actualizar</div>
+    <div class="page-header">
+      <div>
+        <span class="page-title" id="page-title">Resumen</span>
+        <span class="page-title-gain" id="page-title-gain"></span>
+        <div class="last-updated" id="last-updated"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="page-date" id="page-date"></div>
+        <button class="refresh-btn" onclick="cargarDatos()">↻ Actualizar</button>
+      </div>
+    </div>
+    <div class="error-banner" id="error-banner"></div>
+
+    <div id="sec-resumen" class="section active">
+      <div id="resumen-loading" class="loading"><div class="spinner"></div>Cargando datos…</div>
+      <div id="resumen-content" style="display:none">
+        <div class="metrics" id="metrics-row"></div>
+        <div class="chart-row">
+          <div class="chart-card"><div class="chart-title">Composición del portfolio</div><div class="chart-sub">Peso de cada activo en USD</div><div class="legend" id="legend-comp"></div><div class="chart-wrap" style="height:220px"><canvas id="chartComp"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">Retorno por activo</div><div class="chart-sub">Barras: ganancia/pérdida USD · Línea: rendimiento %</div><div class="chart-wrap" style="height:260px"><canvas id="chartBar"></canvas></div></div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-card"><div class="chart-title">Distribución por tipo</div><div class="chart-sub">Reparto entre clases de activo</div><div class="legend" id="legend-tipo"></div><div class="chart-wrap" style="height:220px"><canvas id="chartTipo"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">Evolución del portfolio</div><div class="chart-sub">Valor total en USD a lo largo del tiempo</div><div class="chart-wrap" style="height:260px"><canvas id="chartEvo"></canvas></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="sec-portfolio" class="section">
+      <div id="portfolio-loading" class="loading"><div class="spinner"></div>Cargando posiciones…</div>
+      <div id="portfolio-content" style="display:none">
+        <div class="table-card">
+          <div class="table-header-row">
+            <span class="table-title">Posiciones actuales</span>
+            <div class="table-controls">
+              <span id="portfolio-count" style="font-size:11px;color:var(--muted)"></span>
+              <button class="table-ctrl-btn" onclick="toggleFilter()">⊞ Filtrar</button>
+              <button class="table-ctrl-btn" onclick="toggleColConfig('portfolio')">⚙ Columnas</button>
+              <button class="export-btn" onclick="exportCSV('portfolio')">↓ CSV</button>
+            </div>
+          </div>
+          <div class="filter-bar hidden" id="filter-bar"></div>
+          <div class="col-config-panel" id="portfolio-col-config"></div>
+          <div class="table-scroll"><table><thead><tr id="portfolio-thead"></tr></thead><tbody id="tbl-portfolio"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="sec-operaciones" class="section">
+      <div id="operaciones-loading" class="loading"><div class="spinner"></div>Cargando operaciones…</div>
+      <div id="operaciones-content" style="display:none">
+        <div class="table-card">
+          <div class="table-header-row">
+            <span class="table-title">Historial de operaciones</span>
+            <div class="table-controls">
+              <span id="ops-count" style="font-size:11px;color:var(--muted)"></span>
+              <button class="table-ctrl-btn" onclick="toggleColConfig('ops')">⚙ Columnas</button>
+              <button class="export-btn" onclick="exportCSV('ops')">↓ CSV</button>
+            </div>
+          </div>
+          <div class="search-bar hidden" id="ops-search-bar"><input class="search-input" id="ops-search" type="text" placeholder="Buscar ticker…" oninput="renderOperaciones()" /></div>
+          <div class="col-config-panel" id="ops-col-config"></div>
+          <div class="table-scroll"><table><thead><tr id="ops-thead"></tr></thead><tbody id="tbl-ops"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="sec-ia" class="section">
+      <div class="ia-key-row"><input type="password" id="ia-key-input" placeholder="API key de Anthropic (opcional)" /><button class="ia-key-btn" onclick="guardarApiKey()">Guardar key</button></div>
+      <div class="ia-notice">La API key se guarda solo en este navegador.</div>
+      <div class="suggestions" id="suggestions"></div>
+      <div class="chat-wrap">
+        <div class="chat-msgs" id="chat-msgs"><div class="msg-ai">Hola. Cargá tu API key arriba para habilitar el análisis completo, o preguntame algo igual.</div></div>
+        <div class="chat-footer"><input type="text" id="chat-input" placeholder="Preguntá sobre tu portfolio…" onkeydown="if(event.key==='Enter')sendChat()" /><button class="btn" id="chat-btn" onclick="sendChat()">Enviar</button></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<button class="fab" id="fab-nueva" onclick="openQuickOp()">+</button>
+
+<div class="modal-overlay" id="quick-op-overlay" onclick="if(event.target===this)closeQuickOp()">
+  <div class="modal-sheet">
+    <div class="modal-header"><span class="modal-title">Nueva Operación</span><button class="modal-close" onclick="closeQuickOp()">✕</button></div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Fecha</label><input type="date" class="form-input" id="qop-fecha" /></div>
+      <div class="form-group"><label class="form-label">Orden</label><select class="form-select" id="qop-orden" onchange="toggleQuickFields()"><option value="">Seleccionar…</option><option value="Compra">Compra</option><option value="Venta">Venta</option><option value="Depósito">Depósito</option><option value="Extracción/Gasto">Extracción / Gasto</option></select></div>
+      <div class="form-group" id="qop-ticker-group"><label class="form-label">Ticker</label><input type="text" class="form-input" id="qop-ticker" placeholder="Ej: MELI" autocapitalize="characters" list="ticker-list" oninput="onQuickTickerChange()" onchange="onQuickTickerChange()" /><datalist id="ticker-list"></datalist></div>
+      <div class="form-group" id="qop-nombre-group" style="display:none"><label class="form-label">Nombre</label><input type="text" class="form-input" id="qop-nombre" placeholder="Ej: MercadoLibre" /></div>
+      <div class="form-group" id="qop-tipo-group"><label class="form-label">Tipo</label><select class="form-select" id="qop-tipo"><option value="">Seleccionar…</option><option value="Equity">Equity</option><option value="Bonos">Bonos</option><option value="Crypto">Crypto</option><option value="Cash">Cash</option><option value="Agro">Agro</option></select></div>
+      <div class="form-group" id="qop-moneda-group"><label class="form-label">Moneda</label><select class="form-select" id="qop-moneda" onchange="calcQuickTotal()"><option value="ARS">ARS</option><option value="USD">USD</option></select></div>
+      <div class="form-group"><label class="form-label">Nominales</label><input type="number" class="form-input" id="qop-nominales" placeholder="Cantidad" min="0" step="any" oninput="calcQuickTotal()" /><div id="qop-disponible" style="font-size:11px;color:var(--muted2);margin-top:4px;font-family:'DM Mono',monospace;display:none"></div></div>
+      <div class="form-group" id="qop-precio-group"><label class="form-label">Precio</label><input type="number" class="form-input" id="qop-precio" placeholder="Precio unitario" min="0" step="any" oninput="calcQuickTotal()" /></div>
+      <div class="form-group" id="qop-total-group" style="justify-content:flex-end"><div style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;padding:10px 0">Total: <span id="qop-total" style="color:var(--amber);font-weight:500">—</span></div></div>
+      <div class="form-group full"><button style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:12px;font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;" id="qop-submit" onclick="enviarQuickOp()">Guardar</button></div>
+    </div>
+    <div class="form-success" id="qop-success"></div>
+    <div class="form-error" id="qop-error"></div>
+  </div>
+</div>
+</div>
+
+<script>
+const STORAGE_KEY='portfolio_api_url',STORAGE_APIKEY='portfolio_anthropic_key';
+const COLORS=['#60a5fa','#4ade80','#fbbf24','#a78bfa','#f87171','#34d399','#fb923c','#e879f9','#94a3b8','#2dd4bf','#f472b6','#a3e635'];
+let API_URL='',portfolio=[],operaciones=[],historial=[],mepVal=0,cclVal=0;
+let compChart=null,barChart=null,tipoChart=null,evoChart=null;
+let activeFilter='Todos';
+
+const portfolioCols=[
+  {key:'Activo',label:'Activo',visible:true},{key:'Tipo',label:'Tipo',visible:true},
+  {key:'Nominales',label:'Nominales',visible:true},{key:'Precio',label:'Precio',visible:true},
+  {key:'PPC',label:'PPC',visible:true},{key:'DPT',label:'DPT',visible:true},
+  {key:'TotalARS',label:'Total ARS',visible:true},{key:'TotalUSD',label:'Total USD',visible:true},
+  {key:'PctPort',label:'% Port.',visible:true},{key:'RendUSD',label:'Rend USD',visible:true}
+];
+const opsCols=[
+  {key:'Fecha',label:'Fecha',visible:true},{key:'Orden',label:'Orden',visible:true},
+  {key:'Ticker',label:'Ticker',visible:true},{key:'Nombre',label:'Nombre',visible:true},
+  {key:'Nominales',label:'Nominales',visible:true},{key:'Precio',label:'Precio',visible:true},
+  {key:'TotalARS',label:'Total ARS',visible:true},{key:'TC',label:'TC',visible:true}
+];
+let portfolioSort={key:null,asc:true},opsSort={key:null,asc:true};
+
+// ── INIT ──
+function init(){
+  const s=localStorage.getItem(STORAGE_KEY);
+  if(s){API_URL=s;mostrarApp();}else document.getElementById('setup-screen').style.display='flex';
+  const k=localStorage.getItem(STORAGE_APIKEY);
+  if(k)document.getElementById('ia-key-input').value=k;
+  // Load col prefs
+  try{const p=JSON.parse(localStorage.getItem('fp_pcols')||'{}');
+    if(p._order)reorderCols(portfolioCols,p._order);
+    portfolioCols.forEach(c=>{if(p[c.key]!==undefined)c.visible=p[c.key];});}catch(e){}
+  try{const p=JSON.parse(localStorage.getItem('fp_ocols')||'{}');
+    if(p._order)reorderCols(opsCols,p._order);
+    opsCols.forEach(c=>{if(p[c.key]!==undefined)c.visible=p[c.key];});}catch(e){}
+  // Theme
+  const theme=localStorage.getItem('fp_theme')||'dark';
+  document.documentElement.setAttribute('data-theme',theme);
+  // Pull to refresh
+  setupPullToRefresh();
+  // Show search bar always for ops
+  document.getElementById('ops-search-bar').classList.remove('hidden');
+}
+
+function reorderCols(cols,order){
+  const map={};cols.forEach(c=>map[c.key]=c);
+  const reordered=order.filter(k=>map[k]).map(k=>map[k]);
+  cols.forEach(c=>{if(!order.includes(c.key))reordered.push(c);});
+  cols.length=0;reordered.forEach(c=>cols.push(c));
+}
+
+function guardarConfig(){
+  const url=document.getElementById('setup-url').value.trim(),err=document.getElementById('setup-error');
+  if(!url.startsWith('https://script.google.com/macros/s/')){err.textContent='URL no válida.';err.style.display='block';return;}
+  localStorage.setItem(STORAGE_KEY,url);API_URL=url;err.style.display='none';mostrarApp();
+}
+function resetConfig(){if(!confirm('¿Cambiar conexión?'))return;localStorage.removeItem(STORAGE_KEY);location.reload();}
+function guardarApiKey(){const k=document.getElementById('ia-key-input').value.trim();if(k){localStorage.setItem(STORAGE_APIKEY,k);alert('Guardada.');}else{localStorage.removeItem(STORAGE_APIKEY);alert('Eliminada.');}}
+
+function toggleTheme(){
+  const curr=document.documentElement.getAttribute('data-theme')||'dark';
+  const next=curr==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',next);
+  localStorage.setItem('fp_theme',next);
+  if(portfolio.length>0)renderCharts();
+}
+
+async function guardarEmail(){
+  const email=document.getElementById('email-input').value.trim();
+  const status=document.getElementById('email-status');
+  if(!email){status.textContent='Ingresá un email.';status.style.color='var(--red)';status.style.display='block';return;}
+  status.textContent='Guardando…';status.style.color='var(--muted)';status.style.display='block';
+  try{
+    const res=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action:'updateEmail',email:email})});
+    const data=await res.json();
+    if(data.error){status.textContent='Error: '+data.error;status.style.color='var(--red)';}
+    else{status.textContent='✓ Email guardado';status.style.color='var(--green)';localStorage.setItem('fp_email',email);}
+  }catch(e){status.textContent='Error de conexión';status.style.color='var(--red)';}
+  setTimeout(()=>status.style.display='none',3000);
+}
+
+function mostrarApp(){
+  document.getElementById('setup-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  const now=new Date();
+  document.getElementById('page-date').textContent=now.toLocaleDateString('es-AR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('logo-date').textContent=now.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  // Load saved email
+  const savedEmail=localStorage.getItem('fp_email');
+  if(savedEmail)document.getElementById('email-input').value=savedEmail;
+  cargarDatos();
+  renderColConfig('portfolio',portfolioCols);
+  renderColConfig('ops',opsCols);
+}
+
+// ── PULL TO REFRESH ──
+function setupPullToRefresh(){
+  let startY=0,pulling=false;
+  const main=document.getElementById('main-content');
+  const ind=document.getElementById('pull-indicator');
+  if(!main)return;
+  main.addEventListener('touchstart',e=>{if(main.scrollTop===0){startY=e.touches[0].clientY;pulling=true;}},{passive:true});
+  main.addEventListener('touchmove',e=>{if(!pulling)return;const dy=e.touches[0].clientY-startY;if(dy>60)ind.classList.add('visible');else ind.classList.remove('visible');},{passive:true});
+  main.addEventListener('touchend',()=>{if(ind.classList.contains('visible')){ind.textContent='Actualizando…';cargarDatos();setTimeout(()=>{ind.classList.remove('visible');ind.textContent='↓ Soltar para actualizar';},2000);}pulling=false;},{passive:true});
+}
+
+// ── FETCH ──
+async function fetchSheet(s){const r=await fetch(API_URL+'?sheet='+encodeURIComponent(s));if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();if(d.error)throw new Error(d.error);return d;}
+function showError(m){const b=document.getElementById('error-banner');b.textContent=m;b.style.display='block';setTimeout(()=>b.style.display='none',8000);}
+
+async function cargarDatos(){
+  ['resumen','portfolio','operaciones'].forEach(s=>{document.getElementById(s+'-loading').style.display='block';document.getElementById(s+'-content').style.display='none';});
+  try{
+    const[inv,ops,tc,hist]=await Promise.allSettled([fetchSheet('Portfolio'),fetchSheet('Operaciones'),fetchSheet('Valores'),fetchSheet('Historial')]);
+    if(tc.status==='fulfilled')tc.value.forEach(row=>{const c=(row['Clave']||'').toLowerCase(),v=row['Valor'],n=parseFloat(v)||0;if(c.includes('mep')&&n>0){mepVal=n;document.getElementById('mep-val').textContent='$'+Math.round(n).toLocaleString('es-AR');}if(c.includes('ccl')&&n>0){cclVal=n;document.getElementById('ccl-val').textContent='$'+Math.round(n).toLocaleString('es-AR');}if(c.includes('fecha update')&&v)document.getElementById('tc-updated').textContent=v;if(c.includes('email')&&v){document.getElementById('email-input').value=v;localStorage.setItem('fp_email',v);}});
+    if(hist.status==='fulfilled')historial=hist.value.filter(r=>r['Fecha']&&r['Total USD']);
+    if(inv.status==='fulfilled'){portfolio=inv.value.filter(r=>r['Ticker']&&r['Ticker']!=='');renderPortfolio();renderResumen();renderCashWidget();renderFilterBar();}else showError('Portfolio: '+inv.reason.message);
+    if(ops.status==='fulfilled'){operaciones=ops.value.filter(r=>r['Fecha']&&r['Fecha']!=='');renderOperaciones();}else showError('Operaciones: '+ops.reason.message);
+    actualizarSugerencias();populateTickerList();
+    document.getElementById('last-updated').textContent='Actualizado: '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){showError('Error: '+e.message);}
+}
+
+// ── HELPERS ──
+const fmtARS=n=>'$'+Math.round(n).toLocaleString('es-AR');
+const fmtUSD=n=>'U$S '+parseFloat(n).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+const toN=v=>parseFloat(v)||0;
+const badgeStyle={Equity:'background:#1e3a5f;color:#60a5fa',Bonos:'background:#3d2e00;color:#fbbf24',Crypto:'background:#2e1f4f;color:#a78bfa',Agro:'background:#1a3320;color:#4ade80',Cash:'background:#222;color:#888'};
+const ordenStyle={Compra:'background:#1a3320;color:#4ade80',Venta:'background:#3d1a1a;color:#f87171',Depósito:'background:#1a2a3d;color:#60a5fa',Deposito:'background:#1a2a3d;color:#60a5fa','Extracción/Gasto':'background:#3d2e00;color:#fbbf24'};
+
+function renderCashWidget(){
+  const ars=portfolio.find(p=>p['Ticker']==='ARS');
+  const usd=portfolio.find(p=>p['Ticker']==='USD');
+  document.getElementById('cash-ars').textContent=ars?fmtARS(toN(ars['Nominales'])):'—';
+  document.getElementById('cash-usd').textContent=usd?fmtUSD(toN(usd['Nominales'])):'—';
+}
+
+// ── COLUMN CONFIG + DRAG & DROP ──
+function renderColConfig(id,cols){
+  const panel=document.getElementById(id+'-col-config');
+  panel.innerHTML=cols.map((c,i)=>`<label class="col-toggle" draggable="true" data-idx="${i}" data-table="${id}"><input type="checkbox" ${c.visible?'checked':''} onchange="toggleCol('${id}',${i},this.checked)"> ${c.label}</label>`).join('');
+  // Drag events
+  panel.querySelectorAll('.col-toggle').forEach(el=>{
+    el.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',el.dataset.idx);el.classList.add('dragging');});
+    el.addEventListener('dragend',()=>el.classList.remove('dragging'));
+    el.addEventListener('dragover',e=>{e.preventDefault();el.classList.add('drag-over');});
+    el.addEventListener('dragleave',()=>el.classList.remove('drag-over'));
+    el.addEventListener('drop',e=>{e.preventDefault();el.classList.remove('drag-over');const from=parseInt(e.dataTransfer.getData('text/plain')),to=parseInt(el.dataset.idx);if(from===to)return;const c=id==='portfolio'?portfolioCols:opsCols;const item=c.splice(from,1)[0];c.splice(to,0,item);saveColPrefs(id,c);renderColConfig(id,c);if(id==='portfolio')renderPortfolio();else renderOperaciones();});
+  });
+}
+function toggleColConfig(id){document.getElementById(id+'-col-config').classList.toggle('open');}
+function toggleCol(id,i,v){const cols=id==='portfolio'?portfolioCols:opsCols;cols[i].visible=v;saveColPrefs(id,cols);if(id==='portfolio')renderPortfolio();else renderOperaciones();}
+function saveColPrefs(id,cols){const p={_order:cols.map(c=>c.key)};cols.forEach(c=>p[c.key]=c.visible);localStorage.setItem(id==='portfolio'?'fp_pcols':'fp_ocols',JSON.stringify(p));}
+
+// ── FILTER BAR ──
+function renderFilterBar(){
+  const tipos=['Todos',...new Set(portfolio.map(p=>p['Tipo']).filter(Boolean))];
+  document.getElementById('filter-bar').innerHTML=tipos.map(t=>`<span class="filter-chip ${t===activeFilter?'active':''}" onclick="setFilter('${t}')">${t}</span>`).join('');
+}
+function toggleFilter(){document.getElementById('filter-bar').classList.toggle('hidden');}
+function setFilter(t){activeFilter=t;renderFilterBar();renderPortfolio();}
+
+// ── SORTING ──
+function sortTable(id,key){const s=id==='portfolio'?portfolioSort:opsSort;if(s.key===key)s.asc=!s.asc;else{s.key=key;s.asc=true;}if(id==='portfolio')renderPortfolio();else renderOperaciones();}
+function getSorted(data,sort,gv){if(!sort.key)return data;return[...data].sort((a,b)=>{let va=gv(a,sort.key),vb=gv(b,sort.key);if(typeof va==='string'){va=va.toLowerCase();vb=vb.toLowerCase();}return va<vb?(sort.asc?-1:1):va>vb?(sort.asc?1:-1):0;});}
+
+// ── EXPORT CSV ──
+function exportCSV(type){
+  const cols=type==='portfolio'?portfolioCols:opsCols;
+  const vis=cols.filter(c=>c.visible);
+  const data=type==='portfolio'?portfolio:[...operaciones].reverse();
+  let csv=vis.map(c=>c.label).join(',')+'\n';
+  data.forEach(row=>{
+    csv+=vis.map(c=>{
+      const gv=type==='portfolio'?getPortfolioVal:getOpsVal;
+      let v=gv(row,c.key);
+      if(typeof v==='string'&&v.includes(','))v='"'+v+'"';
+      return v;
+    }).join(',')+'\n';
+  });
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=type+'-'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+}
+
+// ── RENDER PORTFOLIO ──
+function getPortfolioVal(p,k){
+  const tc=mepVal>0?mepVal:1423;
+  switch(k){
+    case'Activo':return p['Nombre']||p['Ticker']||'';case'Tipo':return p['Tipo']||'';
+    case'Nominales':return toN(p['Nominales']);case'Precio':return toN(p['Precio']);
+    case'PPC':return toN(p['PPC']);case'DPT':return toN(p['DPT']);
+    case'TotalARS':return toN(p['Total ARS']);case'TotalUSD':return toN(p['Total USD']);
+    case'PctPort':return toN(p['% Portfolio']);case'RendUSD':return toN(p['Rend. USD']);
+    default:return'';
+  }
+}
+
+function renderPortfolio(){
+  const thead=document.getElementById('portfolio-thead'),tbody=document.getElementById('tbl-portfolio');
+  thead.innerHTML='';tbody.innerHTML='';
+  const tc=mepVal>0?mepVal:1423,vis=portfolioCols.filter(c=>c.visible);
+  let data=activeFilter==='Todos'?portfolio:portfolio.filter(p=>p['Tipo']===activeFilter);
+  document.getElementById('portfolio-count').textContent=data.length+' posiciones';
+  vis.forEach(c=>{const s=portfolioSort.key===c.key;thead.innerHTML+=`<th class="${s?'sorted':''}" onclick="sortTable('portfolio','${c.key}')">${c.label} <span class="sort-arrow">${s?(portfolioSort.asc?'▲':'▼'):'▲'}</span></th>`;});
+  const sorted=getSorted(data,portfolioSort,getPortfolioVal);
+  sorted.forEach(p=>{
+    const rend=toN(p['Rend. USD']),rc=rend>0?'pos':rend<0?'neg':'neu',bs=badgeStyle[p['Tipo']]||'background:#222;color:#888';
+    const pct=toN(p['% Portfolio']),dpt=toN(p['DPT']);
+    const rowBg=rend>0?'var(--row-pos)':rend<0?'var(--row-neg)':'transparent';
+    const concAlert=pct>0.3?`<span class="conc-alert" title="⚠️ Sobreconcentración: este activo representa el ${Math.round(pct*100)}% del portfolio. Se recomienda diversificar.">⚠️ ${Math.round(pct*100)}%</span>`:'';
+    const cm={
+      Activo:`<td><span style="font-weight:500">${p['Nombre']||p['Ticker']}</span>${concAlert}<br><span style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">${p['Ticker']}</span></td>`,
+      Tipo:`<td><span class="badge" style="${bs}">${p['Tipo']||''}</span></td>`,
+      Nominales:`<td class="mono">${toN(p['Nominales']).toLocaleString('es-AR')}</td>`,
+      Precio:`<td class="mono">${fmtARS(toN(p['Precio']))}</td>`,
+      PPC:`<td class="mono" style="color:var(--muted)">${fmtARS(toN(p['PPC']))}</td>`,
+      DPT:`<td class="mono" style="color:var(--muted)">${dpt>0?Math.round(dpt)+'d':'—'}</td>`,
+      TotalARS:`<td class="mono">${fmtARS(toN(p['Total ARS']))}</td>`,
+      TotalUSD:`<td class="mono">${fmtUSD(toN(p['Total USD']))}</td>`,
+      PctPort:`<td class="mono">${(pct*100).toFixed(1)}%</td>`,
+      RendUSD:`<td class="mono ${rc}">${rend>0?'+':''}${(rend*100).toFixed(1)}%</td>`
+    };
+    tbody.innerHTML+=`<tr style="background:${rowBg}">`+vis.map(c=>cm[c.key]).join('')+'</tr>';
+  });
+  document.getElementById('portfolio-loading').style.display='none';
+  document.getElementById('portfolio-content').style.display='block';
+}
+
+// ── RENDER OPERACIONES ──
+function getOpsVal(o,k){
+  switch(k){case'Fecha':return o['Fecha']||'';case'Orden':return o['Orden']||'';case'Ticker':return o['Ticker']||'';case'Nombre':return o['Nombre']||'';case'Nominales':return toN(o['Nominales']);case'Precio':return toN(o['Precio']);case'TotalARS':return toN(o['Total ARS']);case'TC':return toN(o['TC']);default:return'';}
+}
+
+function renderOperaciones(){
+  const thead=document.getElementById('ops-thead'),tbody=document.getElementById('tbl-ops');
+  thead.innerHTML='';tbody.innerHTML='';
+  const vis=opsCols.filter(c=>c.visible);
+  vis.forEach(c=>{const s=opsSort.key===c.key;thead.innerHTML+=`<th class="${s?'sorted':''}" onclick="sortTable('ops','${c.key}')">${c.label} <span class="sort-arrow">${s?(opsSort.asc?'▲':'▼'):'▲'}</span></th>`;});
+  let rev=[...operaciones].reverse();
+  const q=(document.getElementById('ops-search')?.value||'').trim().toUpperCase();
+  if(q)rev=rev.filter(o=>(o['Ticker']||'').toUpperCase().includes(q)||(o['Nombre']||'').toUpperCase().includes(q));
+  const sorted=getSorted(rev,opsSort,getOpsVal);
+  document.getElementById('ops-count').textContent=sorted.length+' operaciones';
+  sorted.forEach(o=>{
+    const os=ordenStyle[o['Orden']]||'background:#222;color:#888';
+    const cm={
+      Fecha:`<td class="mono" style="color:var(--muted)">${o['Fecha']||''}</td>`,
+      Orden:`<td><span class="badge" style="${os}">${o['Orden']||''}</span></td>`,
+      Ticker:`<td class="mono" style="font-weight:500">${o['Ticker']||''}</td>`,
+      Nombre:`<td style="color:var(--muted);font-size:12px">${o['Nombre']||''}</td>`,
+      Nominales:`<td class="mono">${toN(o['Nominales']).toLocaleString('es-AR')}</td>`,
+      Precio:`<td class="mono">${fmtARS(toN(o['Precio']))}</td>`,
+      TotalARS:`<td class="mono">${fmtARS(toN(o['Total ARS']))}</td>`,
+      TC:`<td class="mono" style="color:var(--muted)">$${Math.round(toN(o['TC'])).toLocaleString()}</td>`
+    };
+    tbody.innerHTML+='<tr>'+vis.map(c=>cm[c.key]).join('')+'</tr>';
+  });
+  document.getElementById('operaciones-loading').style.display='none';
+  document.getElementById('operaciones-content').style.display='block';
+}
+
+// ── RENDER RESUMEN ──
+function renderResumen(){
+  const totalARS=portfolio.reduce((a,p)=>a+toN(p['Total ARS']),0);
+  const totalUSD=portfolio.reduce((a,p)=>a+toN(p['Total USD']),0);
+  const tc=mepVal>0?mepVal:1423;
+  const inv=portfolio.filter(p=>p['Tipo']!=='Cash');
+  const costoUSD=inv.reduce((a,p)=>a+toN(p['Nominales'])*toN(p['PPC'])/tc,0);
+  const valorUSD=inv.reduce((a,p)=>a+toN(p['Total USD']),0);
+  const yieldTotal=costoUSD>0?(valorUSD-costoUSD)/costoUSD:0;
+  const todayARS=portfolio.reduce((a,p)=>a+toN(p['Nominales'])*toN(p['Precio']),0);
+  const yesterARS=portfolio.reduce((a,p)=>a+toN(p['Nominales'])*toN(p['Precio Ayer']||p['Precio']),0);
+  const yieldDaily=yesterARS>0?(todayARS-yesterARS)/yesterARS:0;
+  const dailyGainARS=todayARS-yesterARS;
+
+  // Title gain notch
+  const gainEl=document.getElementById('page-title-gain');
+  if(dailyGainARS!==0){
+    gainEl.className='page-title-gain '+(dailyGainARS>=0?'pos':'neg');
+    gainEl.textContent=(dailyGainARS>=0?'+':'')+fmtARS(dailyGainARS)+' hoy';
+  }else gainEl.textContent='';
+
+  document.getElementById('metrics-row').innerHTML=`
+    <div class="metric-card"><div class="metric-label">Total ARS</div><div class="metric-value" style="color:var(--amber)">${fmtARS(totalARS)}</div><div class="metric-sub">valor actual</div></div>
+    <div class="metric-card"><div class="metric-label">Total USD</div><div class="metric-value" style="color:var(--blue)">${fmtUSD(totalUSD)}</div><div class="metric-sub">al MEP $${Math.round(tc).toLocaleString('es-AR')}</div></div>
+    <div class="metric-card"><div class="metric-label">Yield Diario</div><div class="metric-value ${yieldDaily>=0?'pos':'neg'}">${yieldDaily>=0?'+':''}${(yieldDaily*100).toFixed(2)}%</div><div class="metric-sub">variación del día</div></div>
+    <div class="metric-card"><div class="metric-label">Yield Total</div><div class="metric-value ${yieldTotal>=0?'pos':'neg'}">${yieldTotal>=0?'+':''}${(yieldTotal*100).toFixed(1)}%</div><div class="metric-sub">retorno del portfolio</div></div>`;
+  renderCharts();
+  document.getElementById('resumen-loading').style.display='none';
+  document.getElementById('resumen-content').style.display='block';
+}
+
+// ── CHARTS ──
+function renderCharts(){
+  [compChart,barChart,tipoChart,evoChart].forEach(c=>{if(c)c.destroy();});
+  compChart=barChart=tipoChart=evoChart=null;
+  const tc=mepVal>0?mepVal:1423;
+  const inv=portfolio.filter(p=>p['Tipo']!=='Cash');
+  const isDark=(document.documentElement.getAttribute('data-theme')||'dark')==='dark';
+  const gridColor=isDark?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.06)';
+  const tickColor=isDark?'#888':'#666';
+  const borderBg=isDark?'#16181c':'#ffffff';
+
+  // 1. Composición portfolio (ALL including cash)
+  const cL=portfolio.map(p=>p['Ticker']),cD=portfolio.map(p=>toN(p['Total USD'])),cT=cD.reduce((a,b)=>a+b,0);
+  document.getElementById('legend-comp').innerHTML=cL.map((l,i)=>`<span class="legend-item"><span class="legend-dot" style="background:${COLORS[i%COLORS.length]}"></span>${l} ${cT>0?(cD[i]/cT*100).toFixed(0):0}%</span>`).join('');
+  compChart=new Chart(document.getElementById('chartComp'),{type:'doughnut',data:{labels:cL,datasets:[{data:cD,backgroundColor:COLORS.slice(0,cL.length),borderWidth:2,borderColor:borderBg}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.label+': U$S '+Math.round(ctx.raw).toLocaleString()+' ('+((ctx.raw/cT)*100).toFixed(1)+'%)'}}}}});
+
+  // 2. Retorno por activo: bars=USD, line=rend%
+  const bD=inv.map(p=>parseFloat((toN(p['Total USD'])-toN(p['Nominales'])*toN(p['PPC'])/tc).toFixed(0)));
+  const rPct=inv.map(p=>parseFloat((toN(p['Rend. USD'])*100).toFixed(1)));
+  barChart=new Chart(document.getElementById('chartBar'),{type:'line',data:{labels:inv.map(p=>p['Ticker']),datasets:[
+    {type:'bar',label:'Retorno USD',data:bD,backgroundColor:bD.map(v=>v>=0?'rgba(74,222,128,0.8)':'rgba(248,113,113,0.8)'),borderRadius:4,yAxisID:'y',order:2},
+    {type:'line',label:'Rend %',data:rPct,borderColor:'#a78bfa',borderWidth:2.5,pointRadius:5,pointBackgroundColor:'#a78bfa',fill:false,tension:0.3,yAxisID:'y1',order:1}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{color:tickColor,font:{size:10},boxWidth:12}},tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+(ctx.datasetIndex===0?'U$S '+ctx.raw:ctx.raw+'%')}}},scales:{
+    x:{ticks:{color:tickColor,font:{size:11,family:'DM Mono'}},grid:{display:false}},
+    y:{position:'left',ticks:{color:tickColor,font:{size:10,family:'DM Mono'},callback:v=>'U$S '+v},grid:{color:gridColor},border:{display:false}},
+    y1:{position:'right',ticks:{color:'#a78bfa',font:{size:10,family:'DM Mono'},callback:v=>v+'%'},grid:{display:false},border:{display:false}}
+  }}});
+
+  // 3. Distribución por tipo
+  const byT={};portfolio.forEach(p=>{const t=p['Tipo']||'Otro';byT[t]=(byT[t]||0)+toN(p['Total USD']);});
+  const tL=Object.keys(byT),tD=Object.values(byT),tT=tD.reduce((a,b)=>a+b,0);
+  document.getElementById('legend-tipo').innerHTML=tL.map((l,i)=>`<span class="legend-item"><span class="legend-dot" style="background:${COLORS[i%COLORS.length]}"></span>${l} ${tT>0?(tD[i]/tT*100).toFixed(0):0}%</span>`).join('');
+  tipoChart=new Chart(document.getElementById('chartTipo'),{type:'doughnut',data:{labels:tL,datasets:[{data:tD,backgroundColor:COLORS.slice(0,tL.length),borderWidth:2,borderColor:borderBg}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.label+': U$S '+Math.round(ctx.raw).toLocaleString()+' ('+((ctx.raw/tT)*100).toFixed(1)+'%)'}}}}});
+
+  // 4. Evolución
+  if(historial.length>0){
+    const evoLabels=historial.map(h=>h['Fecha']||'');
+    const evoData=historial.map(h=>toN(h['Total USD']));
+    evoChart=new Chart(document.getElementById('chartEvo'),{type:'line',data:{labels:evoLabels,datasets:[{
+      label:'Total USD',data:evoData,borderColor:'#60a5fa',backgroundColor:isDark?'rgba(96,165,250,0.08)':'rgba(37,99,235,0.08)',
+      borderWidth:2,pointRadius:3,pointBackgroundColor:'#60a5fa',fill:true,tension:0.3
+    }]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'U$S '+Math.round(ctx.raw).toLocaleString()}}},scales:{
+      x:{ticks:{color:tickColor,font:{size:10,family:'DM Mono'},maxTicksLimit:10},grid:{display:false}},
+      y:{ticks:{color:tickColor,font:{size:10,family:'DM Mono'},callback:v=>'U$S '+v.toLocaleString()},grid:{color:gridColor},border:{display:false}}
+    }}});
+  }
+}
+
+// ── NAV ──
+const titles={resumen:'Resumen',portfolio:'Posiciones',operaciones:'Operaciones',ia:'Asistente IA'};
+function showSection(name,el){document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));document.getElementById('sec-'+name).classList.add('active');el.classList.add('active');document.getElementById('page-title').textContent=titles[name];document.getElementById('page-title-gain').textContent=name==='resumen'?document.getElementById('page-title-gain').textContent:'';}
+
+// ── SWIPE NAV (mobile) ──
+(function(){
+  let sx=0;const secs=['resumen','portfolio','operaciones','ia'];
+  document.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;},{passive:true});
+  document.addEventListener('touchend',e=>{
+    const dx=e.changedTouches[0].clientX-sx;if(Math.abs(dx)<80)return;
+    const curr=secs.findIndex(s=>document.getElementById('sec-'+s).classList.contains('active'));
+    if(curr<0)return;
+    const next=dx<0?Math.min(curr+1,secs.length-1):Math.max(curr-1,0);
+    if(next!==curr){const navItems=document.querySelectorAll('.nav-item');showSection(secs[next],navItems[next]);}
+  },{passive:true});
+})();
+
+// ── CHAT ──
+function actualizarSugerencias(){const t=portfolio.filter(p=>p['Tipo']!=='Cash').map(p=>p['Ticker']).slice(0,3).join(', ');const s=['¿Qué activos están en positivo?','¿Cuánto perdí en total?','¿Qué % tengo en cash?','¿Cuál es mi posición más grande?',`Analizame ${t}`,'Resumen general'];document.getElementById('suggestions').innerHTML=s.map(x=>`<span class="suggestion" onclick="fillChat('${x}')">${x}</span>`).join('');}
+function fillChat(t){document.getElementById('chat-input').value=t;document.getElementById('chat-input').focus();}
+
+async function sendChat(){
+  const input=document.getElementById('chat-input'),msgs=document.getElementById('chat-msgs'),btn=document.getElementById('chat-btn'),text=input.value.trim();
+  if(!text)return;input.value='';btn.disabled=true;
+  msgs.innerHTML+=`<div class="msg-user">${text}</div>`;
+  const th=document.createElement('div');th.className='msg-ai msg-thinking';th.textContent='Analizando…';msgs.appendChild(th);msgs.scrollTop=msgs.scrollHeight;
+  const apiKey=localStorage.getItem(STORAGE_APIKEY);
+  if(!apiKey){th.textContent='Necesitás cargar tu API key arriba.';th.classList.remove('msg-thinking');btn.disabled=false;return;}
+  const tc=mepVal>0?mepVal:1423;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,
+        system:`Sos un asistente financiero personal para un inversor argentino.\nMEP: $${Math.round(tc)} | CCL: $${Math.round(cclVal)}\n\nPORTFOLIO:\n${JSON.stringify(portfolio.map(p=>({ticker:p['Ticker'],nombre:p['Nombre'],tipo:p['Tipo'],nominales:toN(p['Nominales']),precio:toN(p['Precio']),ppc:toN(p['PPC']),totalUSD:toN(p['Total USD']),rend:toN(p['Rend. USD']),dpt:toN(p['DPT'])})))}\n\nÚLTIMAS OPERACIONES:\n${JSON.stringify(operaciones.slice(-15).reverse().map(o=>({fecha:o['Fecha'],orden:o['Orden'],ticker:o['Ticker'],nominales:toN(o['Nominales']),precio:toN(o['Precio']),totalARS:toN(o['Total ARS'])})))}\n\nRespondé en español, conciso, sin markdown con asteriscos. Texto plano con saltos de línea.`,
+        messages:[{role:'user',content:text}]})});
+    const data=await res.json();th.textContent=data.content?.[0]?.text||'No pude procesar la respuesta.';
+  }catch(e){th.textContent='Error al conectar con la IA.';}
+  th.classList.remove('msg-thinking');msgs.scrollTop=msgs.scrollHeight;btn.disabled=false;
+}
+
+// ── QUICK OP ──
+let recentOps=JSON.parse(localStorage.getItem('portfolio_recent_ops')||'[]');
+let tickerNombres={},tickerTipos={},tickerNominales={};
+function populateTickerList(){const list=document.getElementById('ticker-list');tickerNombres={};tickerTipos={};tickerNominales={};portfolio.forEach(p=>{if(p['Ticker']){const t=p['Ticker'].toUpperCase();tickerNombres[t]=p['Nombre']||'';tickerTipos[t]=p['Tipo']||'';tickerNominales[t]=toN(p['Nominales']);}});list.innerHTML=Object.keys(tickerNombres).filter(t=>t!=='ARS'&&t!=='USD').map(t=>`<option value="${t}">${tickerNombres[t]}</option>`).join('');}
+function openQuickOp(){document.getElementById('quick-op-overlay').classList.add('open');const d=new Date();document.getElementById('qop-fecha').value=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;document.getElementById('qop-success').style.display='none';document.getElementById('qop-error').style.display='none';}
+function closeQuickOp(){document.getElementById('quick-op-overlay').classList.remove('open');['qop-orden','qop-ticker','qop-tipo','qop-nombre'].forEach(id=>document.getElementById(id).value='');document.getElementById('qop-moneda').value='ARS';document.getElementById('qop-nominales').value='';document.getElementById('qop-precio').value='';document.getElementById('qop-precio').disabled=false;document.getElementById('qop-total').textContent='—';document.getElementById('qop-ticker-group').style.display='flex';document.getElementById('qop-nombre-group').style.display='none';document.getElementById('qop-tipo-group').style.display='flex';document.getElementById('qop-precio-group').style.display='flex';document.getElementById('qop-total-group').style.display='flex';document.getElementById('qop-disponible').style.display='none';}
+function isQuickCash(){return['Depósito','Extracción/Gasto'].includes(document.getElementById('qop-orden').value);}
+function toggleQuickFields(){const c=isQuickCash();document.getElementById('qop-ticker-group').style.display=c?'none':'flex';document.getElementById('qop-nombre-group').style.display='none';document.getElementById('qop-tipo-group').style.display=c?'none':'flex';document.getElementById('qop-precio-group').style.display=c?'none':'flex';document.getElementById('qop-total-group').style.display=c?'none':'flex';document.getElementById('qop-disponible').style.display='none';if(c){document.getElementById('qop-tipo').value='Cash';document.getElementById('qop-precio').value=1;document.getElementById('qop-precio').disabled=true;showQuickDisp(document.getElementById('qop-moneda').value);}else{document.getElementById('qop-precio').disabled=false;if(parseFloat(document.getElementById('qop-precio').value)===1)document.getElementById('qop-precio').value='';onQuickTickerChange();}calcQuickTotal();}
+function onQuickTickerChange(){const t=document.getElementById('qop-ticker').value.trim().toUpperCase();if(!t){document.getElementById('qop-nombre-group').style.display='none';document.getElementById('qop-disponible').style.display='none';return;}if(tickerNombres[t]){document.getElementById('qop-nombre-group').style.display='none';if(tickerTipos[t])document.getElementById('qop-tipo').value=tickerTipos[t];showQuickDisp(t);}else{document.getElementById('qop-nombre-group').style.display='flex';document.getElementById('qop-disponible').style.display='none';}}
+function showQuickDisp(t){const d=document.getElementById('qop-disponible'),n=tickerNominales[t.toUpperCase()];if(n&&n>0){d.textContent='Disponible: '+n.toLocaleString('es-AR');d.style.display='block';}else d.style.display='none';}
+function calcQuickTotal(){const n=parseFloat(document.getElementById('qop-nominales').value)||0,p=parseFloat(document.getElementById('qop-precio').value)||0,m=document.getElementById('qop-moneda').value;const t=n*p;document.getElementById('qop-total').textContent=t>0?(m==='USD'?'U$S ':'$')+Math.round(t).toLocaleString('es-AR'):'—';}
+
+async function enviarQuickOp(){
+  const btn=document.getElementById('qop-submit'),suc=document.getElementById('qop-success'),err=document.getElementById('qop-error');
+  suc.style.display='none';err.style.display='none';
+  const c=isQuickCash(),fecha=document.getElementById('qop-fecha').value,orden=document.getElementById('qop-orden').value,moneda=document.getElementById('qop-moneda').value;
+  const ticker=c?moneda:document.getElementById('qop-ticker').value.trim().toUpperCase();
+  const nombre=c?'Cash '+moneda:(document.getElementById('qop-nombre').value.trim()||tickerNombres[ticker]||'');
+  const tipo=document.getElementById('qop-tipo').value,nominales=document.getElementById('qop-nominales').value,precio=c?'1':document.getElementById('qop-precio').value;
+  if(!fecha||!orden||!ticker||!tipo||!moneda||!nominales||!precio){err.textContent='Completá todos los campos.';err.style.display='block';return;}
+  if(parseFloat(nominales)<=0||parseFloat(precio)<=0){err.textContent='Nominales y precio deben ser > 0.';err.style.display='block';return;}
+  btn.disabled=true;btn.textContent='Guardando…';
+  try{
+    const res=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({fecha,orden,ticker,nombre,tipo,moneda,nominales,precio})});
+    const data=await res.json();
+    if(data.error){err.textContent='Error: '+data.error;err.style.display='block';}
+    else{suc.textContent='✓ '+(data.mensaje||'Guardada');suc.style.display='block';recentOps.unshift({fecha:fecha.split('-').reverse().join('/'),orden,ticker,nominales,precio});if(recentOps.length>10)recentOps=recentOps.slice(0,10);localStorage.setItem('portfolio_recent_ops',JSON.stringify(recentOps));document.getElementById('qop-ticker').value='';document.getElementById('qop-nombre').value='';document.getElementById('qop-nombre-group').style.display='none';document.getElementById('qop-nominales').value='';if(!c)document.getElementById('qop-precio').value='';document.getElementById('qop-disponible').style.display='none';document.getElementById('qop-total').textContent='—';setTimeout(()=>cargarDatos(),1500);}
+  }catch(e){err.textContent='Error: '+e.message;err.style.display='block';}
+  btn.disabled=false;btn.textContent='Guardar';
+}
+
+init();
+</script>
+</body>
+</html>
