@@ -1,1 +1,13 @@
+# OS
 .DS_Store
+Thumbs.db
+Desktop.ini
+
+# Exports / dumps
+*.pdf
+*.txt
+
+# Editor
+*.swp
+*.swo
+*~

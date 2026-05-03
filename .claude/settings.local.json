@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)",
+      "Bash(gh run:*)",
+      "Read(//c/Users/juand/.claude/**)",
+      "PowerShell(Get-ChildItem -Path \"$env:USERPROFILE\" -Recurse -Filter \"SKILL.md\" -ErrorAction SilentlyContinue -Depth 6 | Where-Object { $_.FullName -match \"finperso\" } | Select-Object FullName)"
+    ]
+  }
+}
