@@ -2,6 +2,12 @@
 
 Esta carpeta guarda material de referencia que no hace falta tener en la raiz del repo.
 
+## `audits/`
+
+Auditorias tecnicas actuales y planes de mejora priorizados:
+
+- `finperso-audit-2026-05-03.md`: auditoria completa de frontend, PWA, Apps Script y estructura del repo.
+
 ## `reviews/`
 
 Revisiones tecnicas historicas y reportes de fixes:

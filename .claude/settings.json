@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"from PIL import Image; print\\('PIL OK'\\)\")",
+      "Bash(convert --version)",
+      "Bash(sips --getProperty pixelWidth --getProperty pixelHeight \"/Users/juandeezcurra/Desktop/FinPerso/finperso-icon.png\")"
+    ]
+  }
+}

@@ -35,8 +35,13 @@ El tracker esta orientado al mercado argentino y maneja:
 ## Estructura del repo
 
 - `index.html`: app web principal.
+- `manifest.json`: manifest PWA usado por `index.html`.
+- `assets/`: iconos y assets usados por la app.
+- `assets/source/`: fuentes o versiones base de assets generados.
 - `export/`: version HTML exportada.
+- `legacy/`: snapshots historicos que no forman parte del deploy principal.
 - `apps-script/`: codigo fuente del Apps Script. Los cambios en Google Apps Script se aplican manualmente desde el editor de Google.
+- `docs/audits/`: auditorias tecnicas actuales.
 - `docs/reviews/`: revisiones tecnicas y reportes de fixes historicos.
 - `docs/notes/`: notas de bugs o investigaciones puntuales.
 - `.claude/`: configuracion local de Claude/Codex.

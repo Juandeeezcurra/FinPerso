@@ -6,7 +6,11 @@
       "Bash(git push:*)",
       "Bash(gh run:*)",
       "Read(//c/Users/juand/.claude/**)",
-      "PowerShell(Get-ChildItem -Path \"$env:USERPROFILE\" -Recurse -Filter \"SKILL.md\" -ErrorAction SilentlyContinue -Depth 6 | Where-Object { $_.FullName -match \"finperso\" } | Select-Object FullName)"
+      "PowerShell(Get-ChildItem -Path \"$env:USERPROFILE\" -Recurse -Filter \"SKILL.md\" -ErrorAction SilentlyContinue -Depth 6 | Where-Object { $_.FullName -match \"finperso\" } | Select-Object FullName)",
+      "Bash(pip3 install *)",
+      "Bash(python3 -c \"from PIL import Image; print\\('OK'\\)\")",
+      "Bash(python3)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
