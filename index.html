@@ -1698,9 +1698,9 @@ async function cargarDatos(){
     const[inv,ops,tc,hist,eft]=await Promise.allSettled([fetchSheet('Portfolio'),fetchSheet('Operaciones'),fetchSheet('Valores'),fetchSheet('Historial'),fetchSheet('Efectivo')]);
     if(tc.status==='fulfilled')tc.value.forEach(row=>{const c=(row['Clave']||'').toLowerCase(),v=row['Valor'],n=parseFloat(v)||0;if(c.includes('mep')&&n>0){mepVal=n;document.getElementById('mep-val').textContent='$'+Math.round(n).toLocaleString('es-AR');}if(c.includes('ccl')&&n>0){cclVal=n;document.getElementById('ccl-val').textContent='$'+Math.round(n).toLocaleString('es-AR');}if(c.includes('fecha update')&&v)document.getElementById('tc-updated').textContent=v;if(c.includes('email')&&v){document.getElementById('email-input').value=v;localStorage.setItem('fp_email',v);}});
     if(hist.status==='fulfilled')historial=hist.value.filter(r=>r['Fecha']&&r['Total USD']);
+    efectivo=eft.status==='fulfilled'?eft.value.filter(r=>r['Fecha']&&r['Fecha']!==''):[];
     if(inv.status==='fulfilled'){portfolio=inv.value.filter(r=>r['Ticker']&&r['Ticker']!=='');renderPortfolio();renderResumen();renderCashWidget();renderFilterBar();}else showError('Portfolio: '+inv.reason.message);
     if(ops.status==='fulfilled'){operaciones=ops.value.filter(r=>r['Fecha']&&r['Fecha']!=='');renderOperaciones();}else showError('Operaciones: '+ops.reason.message);
-    efectivo=eft.status==='fulfilled'?eft.value.filter(r=>r['Fecha']&&r['Fecha']!==''):[];
     renderEfectivo();
     populateTickerList();
     document.getElementById('last-updated').textContent='Actualizado: '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
@@ -2264,9 +2264,11 @@ function _flowBucketForDate(dateKey,labels){
   if(!labels||!labels.length)return '';
   // Los aportes/retiros con fecha igual o anterior al primer snapshot son capital inicial.
   if(dateKey<=labels[0])return '';
+  const lastLabel=labels[labels.length-1];
+  // Si el movimiento es de hoy y el ultimo snapshot ya lo incluye, ajustarlo en ese punto.
+  if(dateKey===lastLabel)return lastLabel;
   for(const label of labels){
-    // Sin hora real del movimiento, lo aplicamos al primer snapshot posterior.
-    // Evita que un ajuste cargado luego del snapshot del dia genere una caida falsa.
+    // Para dias cerrados sin hora real del movimiento, aplicarlo al primer snapshot posterior.
     if(label>dateKey)return label;
   }
   return '';
