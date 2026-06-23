@@ -798,14 +798,70 @@
     flex-wrap: wrap;
   }
   .lab-control {
-    min-height: 34px;
+    height: 38px;
     background: var(--bg-input);
     border: 1px solid var(--border);
     color: var(--text);
     border-radius: var(--radius-sm);
-    padding: 6px 10px;
+    padding: 6px 12px;
     font-size: var(--text-xs);
     font-family: 'DM Mono', monospace;
+    transition: all var(--dur-fast) var(--ease);
+  }
+  .lab-control:hover,
+  .lab-control:focus {
+    border-color: var(--accent);
+    background: var(--accent-muted);
+    color: var(--text);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(167,139,250,0.10);
+  }
+  #lab-range { width: 74px; }
+  #lab-rf { width: 78px; text-align: center; }
+  .lab-toolbar .table-ctrl-btn {
+    min-height: 38px;
+    padding: 8px 14px;
+  }
+  .lab-toolbar .table-ctrl-btn:hover {
+    color: var(--text);
+    border-color: var(--accent);
+    background: var(--accent-muted);
+    box-shadow: 0 0 0 3px rgba(167,139,250,0.10);
+  }
+  #lab-metrics-row {
+    grid-auto-rows: 1fr;
+  }
+  #lab-metrics-row .metric-card {
+    min-height: 132px;
+    height: 100%;
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+  }
+  #lab-metrics-row .metric-card-header {
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+  #lab-metrics-row .metric-icon {
+    width: 38px;
+    height: 38px;
+  }
+  #lab-metrics-row .metric-body {
+    padding-left: 0;
+    margin-top: auto;
+  }
+  #lab-metrics-row .metric-value {
+    font-size: clamp(24px, 2vw, 30px);
+    line-height: 1.05;
+    margin-bottom: var(--space-2);
+    white-space: nowrap;
+  }
+  #lab-metrics-row .metric-sub {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.35;
+    max-width: 100%;
   }
   .lab-grid {
     display: grid;
@@ -815,9 +871,10 @@
   }
   .lab-grid-wide {
     display: grid;
-    grid-template-columns: 1.15fr 0.85fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-4);
     margin-bottom: var(--space-5);
+    align-items: stretch;
   }
   .lab-note-list {
     display: grid;
@@ -856,7 +913,7 @@
     padding: 6px 8px;
     font-family: 'DM Mono', monospace;
     font-size: var(--text-xs);
-    text-align: right;
+    text-align: center;
   }
   .lab-status {
     color: var(--text-tertiary);
@@ -913,12 +970,16 @@
   }
   .lab-constraints {
     display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-3);
+  }
+  .lab-constraints .lab-note {
+    grid-column: 1 / -1;
   }
   .lab-constraint-row {
     display: grid;
-    grid-template-columns: minmax(130px, 1fr) 82px;
-    gap: var(--space-3);
+    grid-template-columns: minmax(0, 1fr) 68px;
+    gap: var(--space-2);
     align-items: center;
   }
   .lab-constraint-row span {
@@ -969,6 +1030,127 @@
     align-items: center;
     font-size: var(--text-xs);
   }
+  .lab-table-fit {
+    overflow: hidden;
+  }
+  .lab-table-fit table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+  .lab-scenario-table th,
+  .lab-scenario-table td,
+  .lab-corr-table th,
+  .lab-corr-table td,
+  .lab-alts-table th,
+  .lab-alts-table td {
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+  }
+  .lab-scenario-table th:nth-child(1) { width: 34%; }
+  .lab-scenario-table th:nth-child(2) { width: 18%; }
+  .lab-scenario-table th:nth-child(3) { width: 22%; }
+  .lab-scenario-table th:nth-child(4) { width: 26%; }
+  .lab-type-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 66px;
+    border: 1px solid rgba(167,139,250,0.35);
+    border-radius: var(--radius-full);
+    padding: 4px 8px;
+    background: rgba(167,139,250,0.13);
+    color: var(--accent);
+    font-size: var(--text-2xs);
+    font-family: 'DM Mono', monospace;
+    font-weight: 700;
+  }
+  .lab-type-badge.crypto {
+    border-color: rgba(251,191,36,0.35);
+    background: rgba(251,191,36,0.12);
+    color: var(--amber);
+  }
+  .lab-type-badge.etf {
+    border-color: rgba(96,165,250,0.35);
+    background: rgba(96,165,250,0.12);
+    color: #93c5fd;
+  }
+  .lab-corr-table {
+    font-size: var(--text-xs);
+  }
+  .lab-corr-table th,
+  .lab-corr-table td {
+    text-align: center;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .lab-corr-table th:first-child,
+  .lab-corr-table td:first-child {
+    width: 72px;
+    text-align: left;
+  }
+  .lab-alts-table th,
+  .lab-alts-table td {
+    white-space: nowrap;
+  }
+  .lab-view-btn {
+    border: 1px solid var(--border);
+    background: var(--bg-input);
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    padding: 5px 9px;
+    font-size: var(--text-2xs);
+    font-family: 'DM Mono', monospace;
+    cursor: pointer;
+    transition: all var(--dur-fast) var(--ease);
+  }
+  .lab-view-btn:hover,
+  .lab-view-btn.active {
+    color: var(--text);
+    border-color: var(--accent);
+    background: var(--accent-muted);
+  }
+  .lab-portfolio-view {
+    border-top: 1px solid var(--border);
+    padding: var(--space-4) var(--space-5);
+  }
+  .lab-portfolio-view:empty {
+    display: none;
+  }
+  .lab-portfolio-layout {
+    display: grid;
+    grid-template-columns: 170px minmax(0, 1fr);
+    gap: var(--space-4);
+    align-items: center;
+  }
+  .lab-pie {
+    width: 148px;
+    aspect-ratio: 1;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border-strong);
+    box-shadow: inset 0 0 0 22px var(--bg-elevated);
+  }
+  .lab-pie-legend {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2) var(--space-4);
+  }
+  .lab-pie-item {
+    display: grid;
+    grid-template-columns: 10px minmax(0, 1fr) auto;
+    gap: var(--space-2);
+    align-items: center;
+    font-size: var(--text-xs);
+  }
+  .lab-pie-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: var(--radius-full);
+  }
+  .lab-pie-item strong,
+  .lab-pie-item span:last-child {
+    font-family: 'DM Mono', monospace;
+  }
   .lab-corr-cell {
     text-align: center;
     font-family: 'DM Mono', monospace;
@@ -985,6 +1167,10 @@
     .lab-grid, .lab-grid-wide { grid-template-columns: 1fr; }
     .lab-canvas { height: 260px; }
     .lab-suggested-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .lab-constraints { grid-template-columns: 1fr; }
+    .lab-portfolio-layout { grid-template-columns: 1fr; }
+    .lab-pie { width: 132px; }
+    .lab-pie-legend { grid-template-columns: 1fr; }
   }
 
   /* ── TABLES ── */
@@ -1673,7 +1859,7 @@
               <span class="table-title">Pesos actuales y escenario</span>
               <span class="lab-status" id="lab-scenario-total"></span>
             </div>
-            <div class="table-scroll"><table><thead><tr><th>Activo</th><th>Tipo</th><th>Peso actual</th><th>Peso simulado</th><th>Total USD</th></tr></thead><tbody id="lab-scenario-body"></tbody></table></div>
+            <div class="lab-table-fit"><table class="lab-scenario-table"><thead><tr><th>Activo</th><th>Tipo</th><th>Peso actual</th><th>Peso simulado</th></tr></thead><tbody id="lab-scenario-body"></tbody></table></div>
           </div>
 
           <div class="chart-card">
@@ -1688,7 +1874,7 @@
             <div class="chart-title">Frontera eficiente</div>
             <div class="chart-sub">Puntos long-only con restricciones; retornos historicos</div>
             <canvas class="lab-canvas" id="lab-frontier" width="900" height="420"></canvas>
-            <div class="lab-legend"><span><i class="lab-legend-dot" style="background:#fbbf24"></i>Actual</span><span><i class="lab-legend-dot" style="background:#60a5fa"></i>Simulado</span><span><i class="lab-legend-dot" style="background:#4ade80"></i>Min vol restr.</span><span><i class="lab-legend-dot" style="background:#a78bfa"></i>Max Sharpe restr.</span><span><i class="lab-legend-dot" style="background:#f87171"></i>Max Sharpe libre</span></div>
+            <div class="lab-legend"><span><i class="lab-legend-dot" style="background:#fbbf24"></i>Actual</span><span><i class="lab-legend-dot" style="background:#60a5fa"></i>Simulado</span><span><i class="lab-legend-dot" style="background:#4ade80"></i>Min vol restr.</span><span><i class="lab-legend-dot" style="background:#a78bfa"></i>Max Sharpe restr.</span></div>
           </div>
           <div class="chart-card">
             <div class="chart-title">Drawdown</div>
@@ -1704,14 +1890,15 @@
               <span class="table-title">Matriz de correlaciones</span>
               <span class="lab-status">retornos diarios alineados</span>
             </div>
-            <div class="table-scroll"><table id="lab-corr-table"></table></div>
+            <div class="lab-table-fit"><table class="lab-corr-table" id="lab-corr-table"></table></div>
           </div>
           <div class="table-card">
             <div class="table-header-row">
               <span class="table-title">Comparacion de portfolios</span>
               <span class="lab-status">actual, simulado, min vol, max Sharpe restringido</span>
             </div>
-            <div class="table-scroll"><table id="lab-alts-table"></table></div>
+            <div class="lab-table-fit"><table class="lab-alts-table" id="lab-alts-table"></table></div>
+            <div class="lab-portfolio-view" id="lab-portfolio-view"></div>
           </div>
         </div>
 
@@ -1722,9 +1909,9 @@
             <div class="lab-suggested" id="lab-suggested"></div>
           </div>
           <div class="chart-card">
-            <div class="chart-title">Calidad del optimizador</div>
-            <div class="chart-sub">Senales de robustez, concentracion y sobreajuste</div>
-            <div class="lab-note-list" id="lab-quality"></div>
+            <div class="chart-title">Contribucion al riesgo</div>
+            <div class="chart-sub">Cuanto explica cada activo de la volatilidad total</div>
+            <div class="lab-risk-list" id="lab-risk-contrib"></div>
           </div>
         </div>
 
@@ -1735,9 +1922,9 @@
             <div class="lab-note-list" id="lab-comments"></div>
           </div>
           <div class="chart-card">
-            <div class="chart-title">Contribucion al riesgo</div>
-            <div class="chart-sub">Cuanto explica cada activo de la volatilidad total</div>
-            <div class="lab-risk-list" id="lab-risk-contrib"></div>
+            <div class="chart-title">Calidad del optimizador</div>
+            <div class="chart-sub">Senales de robustez, concentracion y sobreajuste</div>
+            <div class="lab-note-list" id="lab-quality"></div>
           </div>
         </div>
       </div>
@@ -1912,7 +2099,9 @@ let compChart=null,tipoChart=null,evoChart=null;
 let activeFilter='Todos';
 let activeCurrency='ARS'; // 'ARS' o 'USD' — controla toda la UI de Resumen
 let labMarketData={},labScenario=[],labRange='2y',labRiskFreeRate=0.04,labLoading=false,labDataAttempted=false;
-let labConstraints={maxAsset:0.35,maxSingle:0.35,maxEtf:0.35,maxCrypto:0.15};
+let labConstraints={maxAsset:0.35,maxSingle:0.25,maxEtf:0.35,maxCrypto:0.10,maxTop3:0.75,minEffective:3,maxHhi:0.35};
+let labSelectedPortfolio='maxSharpeConstrained';
+let labLastAnalytics=null;
 const LAB_SYMBOL_ALIASES={ADGO:'AGRO'};
 const LAB_MIN_OBS=80;
 const LAB_ETF_TICKERS=new Set(['SPY','VOO','VTI','QQQ','IWM','DIA','VEA','VWO','ACWI','URTH','EWY','EEM','IBIT','GLD','SLV','TLT','HYG','LQD']);
@@ -3028,6 +3217,9 @@ function labAssetKind(asset){
   if(tipo.includes('equity'))return 'single';
   return 'other';
 }
+function labTypeClass(tipo,ticker,name){
+  return labAssetKind({tipo,ticker,name});
+}
 function labAssetCap(asset){
   const kind=labAssetKind(asset);
   const base=labConstraints.maxAsset;
@@ -3056,12 +3248,20 @@ function labRandomWeightsCapped(caps){
       const val=k===n-1?remaining:minThis+(maxThis-minThis)*Math.random();
       w[i]=Math.max(0,Math.min(caps[i],val));remaining-=w[i];
     }
-    if(!failed&&Math.abs(remaining)<1e-6&&w.every((v,i)=>v<=caps[i]+1e-6))return w;
+    if(!failed&&Math.abs(remaining)<1e-6&&w.every((v,i)=>v<=caps[i]+1e-6)&&labWeightsMeetConstraints(w))return w;
   }
   return null;
 }
 function labWeightsHhi(w){return w.reduce((s,x)=>s+x*x,0);}
 function labEffectiveAssets(w){const h=labWeightsHhi(w);return h>0?1/h:0;}
+function labTopNWeight(w,n){return w.slice().sort((a,b)=>b-a).slice(0,n).reduce((s,x)=>s+x,0);}
+function labWeightsMeetConstraints(w){
+  if(!w||!w.length)return false;
+  if(labTopNWeight(w,3)>labConstraints.maxTop3+1e-6)return false;
+  if(labEffectiveAssets(w)+1e-6<labConstraints.minEffective)return false;
+  if(labWeightsHhi(w)>labConstraints.maxHhi+1e-6)return false;
+  return true;
+}
 function labPortStats(w,mu,covM){
   const ret=labDot(w,mu);
   const vol=Math.sqrt(Math.max(0,labDot(w,labMatVec(covM,w))));
@@ -3119,12 +3319,10 @@ function labAnalytics(){
   let current=labPortStats(currentW,mu,covM);
   let sim=labPortStats(simW,mu,covM);
   let equal=labPortStats(Array(n).fill(1/n),mu,covM);
-  let minVol={vol:Infinity},maxSharpeFree={sharpe:-Infinity,realizedSharpe:-Infinity},maxSharpeConstrained={sharpe:-Infinity,realizedSharpe:-Infinity},points=[];
+  let minVol={vol:Infinity},maxSharpeConstrained={sharpe:-Infinity,realizedSharpe:-Infinity},points=[];
   const caps=labCaps(maps.map(m=>m.asset));
   const score=s=>isFinite(s.realizedSharpe)?s.realizedSharpe:s.sharpe;
   for(let i=0;i<6500;i++){
-    const free=addRealized(labPortStats(labRandomWeights(n),mu,covM));
-    if(score(free)>score(maxSharpeFree))maxSharpeFree=free;
     const w=labRandomWeightsCapped(caps);
     if(w){
       const s=addRealized(labPortStats(w,mu,covM));
@@ -3146,7 +3344,6 @@ function labAnalytics(){
   equal=addRealized(equal);
   minVol=addRealized(minVol);
   maxSharpeConstrained=addRealized(maxSharpeConstrained);
-  maxSharpeFree=addRealized(maxSharpeFree);
   const maxSharpe=maxSharpeConstrained;
   const currentDD=current.dd;
   const simDD=sim.dd;
@@ -3156,7 +3353,7 @@ function labAnalytics(){
     const denom=labStd(rets[i])*labStd(rets[j]);
     return denom>0?labCov(rets[i],rets[j])/denom:0;
   }));
-  return {assets:maps.map(m=>m.asset),dates:usedDates,rets,mu,covM,current,sim,equal,minVol,maxSharpe,maxSharpeConstrained,maxSharpeFree,points,caps,currentDD,simDD,riskContrib,corr};
+  return {assets:maps.map(m=>m.asset),dates:usedDates,rets,mu,covM,current,sim,equal,minVol,maxSharpe,maxSharpeConstrained,points,caps,currentDD,simDD,riskContrib,corr};
 }
 function labAnalyticsIssue(){
   const loaded=labScenario.map(s=>({ticker:s.ticker,symbol:s.symbol,data:labMarketData[s.ticker]&&labMarketData[s.ticker].data||[]}));
@@ -3180,7 +3377,7 @@ function drawLabScatter(analytics){
   const {ctx,W,H}=labSetCanvasSize(c);ctx.clearRect(0,0,W,H);ctx.fillStyle='rgba(0,0,0,0.10)';ctx.fillRect(0,0,W,H);
   if(!analytics){ctx.fillStyle='#888';ctx.font='14px sans-serif';ctx.fillText(labAnalyticsIssue(),24,32);return;}
   const yRet=p=>isFinite(p.cagr)?p.cagr:p.ret;
-  const special=[{...analytics.current,label:'Actual',color:'#fbbf24'},{...analytics.sim,label:'Sim',color:'#60a5fa'},{...analytics.minVol,label:'Min Vol restr.',color:'#4ade80'},{...analytics.maxSharpeConstrained,label:'Sharpe restr.',color:'#a78bfa'},{...analytics.maxSharpeFree,label:'Sharpe libre',color:'#f87171'}].filter(p=>p&&isFinite(p.vol)&&isFinite(yRet(p)));
+  const special=[{...analytics.current,label:'Actual',color:'#fbbf24'},{...analytics.sim,label:'Sim',color:'#60a5fa'},{...analytics.minVol,label:'Min Vol restr.',color:'#4ade80'},{...analytics.maxSharpeConstrained,label:'Sharpe restr.',color:'#a78bfa'}].filter(p=>p&&isFinite(p.vol)&&isFinite(yRet(p)));
   const xs=analytics.points.map(p=>p.vol).concat(special.map(p=>p.vol)),ys=analytics.points.map(yRet).concat(special.map(yRet));
   let xmin=Math.min(...xs)*0.9,xmax=Math.max(...xs)*1.1,ymin=Math.min(...ys)*1.1,ymax=Math.max(...ys)*1.1;if(ymin>0)ymin=0;
   const X=x=>58+(x-xmin)/(xmax-xmin)*(W-92),Y=y=>H-46-(y-ymin)/(ymax-ymin)*(H-76);
@@ -3214,14 +3411,14 @@ function renderLabMetrics(a){
   const c=labConcentration(),stats=labHistoricalStats();
   const live=a?a.current:null;
   el.innerHTML=[
-    labMetricCard('Valor',fmtUSD(c.total),'portfolio total USD',LAB_ICONS.value),
+    labMetricCard('Valor',fmtUSD(c.total),'total del portfolio en USD',LAB_ICONS.value),
     labMetricCard('CAGR hist.',live&&live.cagr!==null?labPct(live.cagr,1):'--','retorno anual compuesto',LAB_ICONS.return,live&&live.cagr<0?'neg':''),
-    labMetricCard('Vol anual',live?labPct(live.vol,1):(stats?labPct(stats.annVol,1):'--'),'desvio anual de retornos diarios',LAB_ICONS.vol,live&&live.vol>0.35?'neg':''),
-    labMetricCard('Sharpe hist.',live&&live.realizedSharpe!==null?labNum(live.realizedSharpe,2):(stats?labNum(stats.sharpe,2):'--'),'CAGR menos risk-free / vol',LAB_ICONS.sharpe,live&&live.realizedSharpe>=1?'pos':live&&live.realizedSharpe<0.5?'neg':''),
-    labMetricCard('Max DD',a?labPct(a.currentDD.mdd,1):(stats?labPct(stats.maxDD,1):'--'),'mayor caida desde un pico',LAB_ICONS.drawdown,a&&a.currentDD.mdd<-0.30?'neg':''),
-    labMetricCard('Top 3',labPct(c.top3,1),'peso en las 3 mayores posiciones',LAB_ICONS.concentration,c.top3>0.65?'neg':''),
-    labMetricCard('HHI',labNum(c.hhi,2),'0 diversificado / 1 concentrado',LAB_ICONS.hhi,c.hhi>0.25?'neg':''),
-    labMetricCard('Cobertura',a?Math.round(a.assets.length/labScenario.length*100)+'%':'--','activos con historicos utiles',LAB_ICONS.data)
+    labMetricCard('Vol anual',live?labPct(live.vol,1):(stats?labPct(stats.annVol,1):'--'),'riesgo anualizado diario',LAB_ICONS.vol,live&&live.vol>0.35?'neg':''),
+    labMetricCard('Sharpe hist.',live&&live.realizedSharpe!==null?labNum(live.realizedSharpe,2):(stats?labNum(stats.sharpe,2):'--'),'CAGR - risk-free / vol',LAB_ICONS.sharpe,live&&live.realizedSharpe>=1?'pos':live&&live.realizedSharpe<0.5?'neg':''),
+    labMetricCard('Max DD',a?labPct(a.currentDD.mdd,1):(stats?labPct(stats.maxDD,1):'--'),'peor caida pico-valle',LAB_ICONS.drawdown,a&&a.currentDD.mdd<-0.30?'neg':''),
+    labMetricCard('Top 3',labPct(c.top3,1),'tres mayores posiciones',LAB_ICONS.concentration,c.top3>0.65?'neg':''),
+    labMetricCard('HHI',labNum(c.hhi,2),'0 bajo / 1 alto',LAB_ICONS.hhi,c.hhi>0.25?'neg':''),
+    labMetricCard('Cobertura',a?Math.round(a.assets.length/labScenario.length*100)+'%':'--','historicos utiles',LAB_ICONS.data)
   ].join('');
 }
 function renderLabScenario(){
@@ -3229,8 +3426,11 @@ function renderLabScenario(){
   buildLabScenario();
   const totalWeight=labScenario.reduce((a,s)=>a+s.weight,0);
   document.getElementById('lab-scenario-total').textContent='Simulado '+(totalWeight*100).toFixed(1)+'%';
-  if(!labScenario.length){tbody.innerHTML='<tr><td colspan="5" class="cell-muted" style="text-align:center;padding:24px">No hay activos invertibles para simular.</td></tr>';return;}
-  tbody.innerHTML=labScenario.map((s,i)=>`<tr><td><span class="ticker-name">${labEsc(s.name)}</span><span class="ticker-code">${labEsc(s.ticker)}</span></td><td><span class="badge">${labEsc(s.tipo)}</span></td><td class="mono">${(s.currentWeight*100).toFixed(1)}%</td><td><input class="lab-scenario-input" type="number" min="0" max="100" step="0.1" value="${(s.weight*100).toFixed(1)}" onchange="updateLabWeight(${i},this.value)" /></td><td class="mono">${fmtUSD(s.totalUSD)}</td></tr>`).join('');
+  if(!labScenario.length){tbody.innerHTML='<tr><td colspan="4" class="cell-muted" style="text-align:center;padding:24px">No hay activos invertibles para simular.</td></tr>';return;}
+  tbody.innerHTML=labScenario.map((s,i)=>{
+    const kind=labTypeClass(s.tipo,s.ticker,s.name);
+    return `<tr><td><span class="ticker-name">${labEsc(s.name)}</span><span class="ticker-code">${labEsc(s.ticker)}</span></td><td><span class="lab-type-badge ${kind}">${labEsc(s.tipo)}</span></td><td class="mono">${(s.currentWeight*100).toFixed(1)}%</td><td><input class="lab-scenario-input" type="number" min="0" max="100" step="0.1" value="${(s.weight*100).toFixed(1)}" onchange="updateLabWeight(${i},this.value)" /></td></tr>`;
+  }).join('');
 }
 function renderLabComments(a){
   const el=document.getElementById('lab-comments');if(!el)return;
@@ -3250,10 +3450,6 @@ function renderLabComments(a){
   }
   if(current&&sim&&sim.realizedSharpe!==null&&current.realizedSharpe!==null&&sim.realizedSharpe>current.realizedSharpe)notes.push(['Escenario','El escenario simulado mejora el Sharpe historico usando los pesos cargados.']);
   if(a&&a.maxSharpeConstrained&&a.maxSharpeConstrained.realizedSharpe>(current.realizedSharpe??current.sharpe)+0.25)notes.push(['Frontera','El optimizador restringido encuentra combinaciones con mejor Sharpe historico. No es prediccion, pero senala que el sizing actual merece revision.']);
-  if(a&&a.maxSharpeFree){
-    const top=Math.max(...a.maxSharpeFree.w),idx=a.maxSharpeFree.w.indexOf(top);
-    if(top>0.5&&a.assets[idx])notes.push(['Sobreajuste','El Max Sharpe libre concentra mas de 50% en '+a.assets[idx].ticker+'. Por eso el candidato principal usa restricciones.']);
-  }
   if(!Object.keys(labMarketData).length)notes.push(['Datos','Para simulacion por ticker hay que desplegar el Apps Script actualizado con el endpoint MarketData.']);
   if(!notes.length)notes.push(['Lectura','El portfolio no dispara alertas fuertes en las reglas iniciales. Siguiente paso: beta, correlaciones y stress tests.']);
   el.innerHTML=notes.map(n=>`<div class="lab-note"><strong>${labEsc(n[0])}.</strong> ${labEsc(n[1])}</div>`).join('');
@@ -3270,19 +3466,27 @@ function renderLabRiskContrib(a){
 function renderLabConstraints(a){
   const el=document.getElementById('lab-constraints');if(!el)return;
   const rows=[
-    ['maxAsset','Max por activo','limite general de concentracion'],
-    ['maxSingle','Max accion individual','single-name equity'],
-    ['maxEtf','Max ETF','fondos diversificados / wrappers'],
-    ['maxCrypto','Max crypto','BTC/ETH/cripto wrappers']
+    ['maxAsset','Max por activo','limite general de concentracion','pct',1],
+    ['maxSingle','Max accion individual','single-name equity','pct',1],
+    ['maxEtf','Max ETF','fondos diversificados / wrappers','pct',1],
+    ['maxCrypto','Max crypto','BTC/ETH/cripto wrappers','pct',1],
+    ['maxTop3','Max Top 3','peso maximo en las tres mayores','pct',1],
+    ['minEffective','Min activos efectivos','1 / HHI minimo requerido','num',0.5],
+    ['maxHhi','Max HHI','concentracion maxima permitida','dec',0.01]
   ];
   const caps=a?a.caps:labScenario.map(labAssetCap);
   const feasible=!caps.length||caps.reduce((s,x)=>s+x,0)>=1-1e-9;
-  el.innerHTML=rows.map(([key,label,sub])=>`
+  el.innerHTML=rows.map(([key,label,sub,kind,step])=>{
+    const raw=labConstraints[key];
+    const value=kind==='pct'?(raw*100).toFixed(0):kind==='dec'?raw.toFixed(2):raw.toFixed(1).replace(/\.0$/,'');
+    const max=kind==='num'?labScenario.length:kind==='dec'?1:100;
+    return `
     <label class="lab-constraint-row">
       <span>${labEsc(label)}<small>${labEsc(sub)}</small></span>
-      <input class="lab-scenario-input" type="number" min="0" max="100" step="1" value="${(labConstraints[key]*100).toFixed(0)}" onchange="setLabConstraint('${key}',this.value)" />
+      <input class="lab-scenario-input" type="number" min="0" max="${max}" step="${step}" value="${value}" onchange="setLabConstraint('${key}',this.value)" />
     </label>
-  `).join('')+
+  `;
+  }).join('')+
   `<div class="lab-note"><strong>${feasible?'Factible':'No factible'}.</strong> ${feasible?'El optimizador busca portfolios que respetan estos caps.':'La suma de caps no permite llegar a 100%; subi algun limite.'}</div>`;
 }
 function renderLabSuggested(a){
@@ -3312,15 +3516,12 @@ function renderLabSuggested(a){
 function renderLabQuality(a){
   const el=document.getElementById('lab-quality');if(!el)return;
   if(!a){el.innerHTML=`<div class="lab-note">${labEsc(labAnalyticsIssue())}</div>`;return;}
-  const constrained=a.maxSharpeConstrained,free=a.maxSharpeFree,notes=[];
+  const constrained=a.maxSharpeConstrained,notes=[];
   const topRest=Math.max(...constrained.w),idxRest=constrained.w.indexOf(topRest);
-  const topFree=Math.max(...free.w),idxFree=free.w.indexOf(topFree);
   const eff=labEffectiveAssets(constrained.w);
-  const gap=(free.realizedSharpe??free.sharpe)-(constrained.realizedSharpe??constrained.sharpe);
-  if(topFree>topRest+0.15)notes.push(['Optimo libre',`Sin restricciones iria a ${a.assets[idxFree].ticker} ${(topFree*100).toFixed(1)}%. Eso es una senal de sobreajuste, no una recomendacion.`]);
   if(topRest>=a.caps[idxRest]-0.005)notes.push(['Cap activo',`${a.assets[idxRest].ticker} llega al cap de ${(a.caps[idxRest]*100).toFixed(0)}%. El resultado sigue queriendo mas exposicion ahi.`]);
   notes.push(['Diversificacion',`El sugerido tiene ${eff.toFixed(1)} activos efectivos y HHI ${labWeightsHhi(constrained.w).toFixed(2)}.`]);
-  if(gap>0.25)notes.push(['Costo de prudencia',`Las restricciones bajan el Sharpe historico ${gap.toFixed(2)} puntos vs el optimo libre, pero reducen concentracion.`]);
+  notes.push(['Concentracion',`Top 3 sugerido ${(labTopNWeight(constrained.w,3)*100).toFixed(1)}% vs limite ${(labConstraints.maxTop3*100).toFixed(0)}%.`]);
   notes.push(['Supuestos','CAGR historico, volatilidad diaria anualizada, long-only, sin leverage ni costos. Es diagnostico, no prediccion.']);
   el.innerHTML=notes.map(n=>`<div class="lab-note"><strong>${labEsc(n[0])}.</strong> ${labEsc(n[1])}</div>`).join('');
 }
@@ -3339,27 +3540,58 @@ function renderLabCorr(a){
   }
   el.innerHTML=html+'</tbody>';
 }
+function labPortfolioRows(a){
+  return [
+    ['Actual',a.current,'current'],
+    ['Simulado',a.sim,'sim'],
+    ['Min vol restr.',a.minVol,'minVol'],
+    ['Max Sharpe restr.',a.maxSharpeConstrained,'maxSharpeConstrained']
+  ];
+}
 function renderLabAlts(a){
   const el=document.getElementById('lab-alts-table');if(!el)return;
   if(!a){el.innerHTML=`<tr><td class="cell-muted" style="padding:24px;text-align:center">${labEsc(labAnalyticsIssue())}</td></tr>`;return;}
-  const rows=[
-    ['Actual',a.current],
-    ['Simulado',a.sim],
-    ['Min vol restr.',a.minVol],
-    ['Max Sharpe restr.',a.maxSharpeConstrained],
-    ['Max Sharpe libre',a.maxSharpeFree]
-  ];
-  el.innerHTML='<thead><tr><th>Portfolio</th><th>CAGR hist.</th><th>Vol anual</th><th>Sharpe hist.</th><th>Mayor peso</th></tr></thead><tbody>'+
-    rows.map(([name,s])=>{
-      const idx=s.w.indexOf(Math.max(...s.w));
+  const rows=labPortfolioRows(a);
+  el.innerHTML='<thead><tr><th>Portfolio</th><th>CAGR hist.</th><th>Vol anual</th><th>Sharpe hist.</th><th>Composicion</th></tr></thead><tbody>'+
+    rows.map(([name,s,key])=>{
       const sh=s.realizedSharpe;
-      return `<tr><td><strong>${name}</strong></td><td class="mono ${s.cagr<0?'neg':'pos'}">${labPct(s.cagr,1)}</td><td class="mono">${labPct(s.vol,1)}</td><td class="mono ${sh<0.5?'neg':sh>1?'pos':''}">${labNum(sh,2)}</td><td>${labEsc(a.assets[idx].ticker)} ${(s.w[idx]*100).toFixed(1)}%</td></tr>`;
+      return `<tr><td><strong>${labEsc(name)}</strong></td><td class="mono ${s.cagr<0?'neg':'pos'}">${labPct(s.cagr,1)}</td><td class="mono">${labPct(s.vol,1)}</td><td class="mono ${sh<0.5?'neg':sh>1?'pos':''}">${labNum(sh,2)}</td><td><button class="lab-view-btn ${labSelectedPortfolio===key?'active':''}" onclick="selectLabPortfolio('${key}')">Ver portfolio</button></td></tr>`;
     }).join('')+'</tbody>';
+  renderLabPortfolioView(a);
+}
+function renderLabPortfolioView(a){
+  const el=document.getElementById('lab-portfolio-view');if(!el)return;
+  if(!a){el.innerHTML='';return;}
+  const selected=labPortfolioRows(a).find(x=>x[2]===labSelectedPortfolio)||labPortfolioRows(a)[0];
+  const [name,s]=selected;
+  const colors=['#a78bfa','#60a5fa','#34d399','#fbbf24','#f87171','#22d3ee','#fb7185','#c084fc'];
+  const weights=s.w.map((w,i)=>({w,asset:a.assets[i],color:colors[i%colors.length]})).filter(x=>x.w>0.005).sort((x,y)=>y.w-x.w);
+  let acc=0;
+  const stops=weights.map(x=>{const start=acc;acc+=x.w*100;return `${x.color} ${start.toFixed(2)}% ${acc.toFixed(2)}%`;}).join(',');
+  el.innerHTML=`
+    <div class="lab-portfolio-layout">
+      <div>
+        <div class="chart-title">${labEsc(name)}</div>
+        <div class="chart-sub">Composicion por pesos historicos simulados</div>
+        <div class="lab-pie" style="background:conic-gradient(${stops})"></div>
+      </div>
+      <div class="lab-pie-legend">
+        ${weights.map(x=>`<div class="lab-pie-item"><i class="lab-pie-dot" style="background:${x.color}"></i><strong>${labEsc(x.asset.ticker)}</strong><span>${(x.w*100).toFixed(1)}%</span></div>`).join('')}
+      </div>
+    </div>
+  `;
+}
+function selectLabPortfolio(key){
+  labSelectedPortfolio=key;
+  if(labLastAnalytics){
+    renderLabAlts(labLastAnalytics);
+  }
 }
 function renderPortfolioLab(){
   if(!document.getElementById('sec-lab'))return;
   buildLabScenario();
   const a=labAnalytics();
+  labLastAnalytics=a;
   renderLabMetrics(a);renderLabScenario();renderLabConstraints(a);renderLabSuggested(a);renderLabQuality(a);renderLabRiskContrib(a);renderLabCorr(a);renderLabAlts(a);drawLabScatter(a);drawLabDrawdown(a);renderLabComments(a);
   if(!Object.keys(labMarketData).length&&!labLoading&&!labDataAttempted&&portfolio.length)loadLabMarketData();
 }
@@ -3384,7 +3616,10 @@ function setLabRange(v){labRange=v;refreshPortfolioLab();}
 function setLabRiskFree(v){labRiskFreeRate=(labParseNumber(v)||0)/100;renderPortfolioLab();}
 function setLabConstraint(key,v){
   if(!(key in labConstraints))return;
-  labConstraints[key]=Math.max(0,Math.min(1,(labParseNumber(v)||0)/100));
+  const n=labParseNumber(v)||0;
+  if(['maxAsset','maxSingle','maxEtf','maxCrypto','maxTop3'].includes(key))labConstraints[key]=Math.max(0,Math.min(1,n/100));
+  else if(key==='minEffective')labConstraints[key]=Math.max(1,Math.min(Math.max(1,labScenario.length),n));
+  else if(key==='maxHhi')labConstraints[key]=Math.max(0.01,Math.min(1,n));
   renderPortfolioLab();
 }
 function resetLabScenario(){buildLabScenario(true);const status=document.getElementById('lab-status');if(status)status.textContent='Pesos restaurados al portfolio actual';renderPortfolioLab();}
