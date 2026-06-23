@@ -863,8 +863,52 @@
     font-size: var(--text-xs);
     font-family: 'DM Mono', monospace;
   }
+  .lab-canvas {
+    width: 100%;
+    height: 320px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    display: block;
+  }
+  .lab-risk-list {
+    display: grid;
+    gap: var(--space-3);
+  }
+  .lab-risk-row {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr) 66px;
+    gap: var(--space-3);
+    align-items: center;
+    font-size: var(--text-xs);
+  }
+  .lab-risk-bar {
+    height: 8px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+  }
+  .lab-risk-bar i {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+  }
+  .lab-corr-cell {
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-size: var(--text-xs);
+  }
+  .lab-section-kicker {
+    color: var(--text-tertiary);
+    font-size: var(--text-xs);
+    font-family: 'DM Mono', monospace;
+    margin-top: -6px;
+    margin-bottom: var(--space-3);
+  }
   @media (max-width: 900px) {
     .lab-grid, .lab-grid-wide { grid-template-columns: 1fr; }
+    .lab-canvas { height: 260px; }
   }
 
   /* ── TABLES ── */
@@ -1529,14 +1573,16 @@
       <div id="lab-content">
         <div class="lab-toolbar">
           <div class="lab-toolbar-group">
+            <span class="lab-status">Lookback</span>
             <select class="lab-control" id="lab-range" onchange="setLabRange(this.value)">
               <option value="6mo">6M</option>
               <option value="1y">1Y</option>
               <option value="2y" selected>2Y</option>
               <option value="5y">5Y</option>
             </select>
+            <span class="lab-status">Risk-free anual</span>
             <input class="lab-control" id="lab-rf" type="number" min="0" max="100" step="0.1" value="4" onchange="setLabRiskFree(this.value)" title="Risk-free anual (%)" />
-            <button class="table-ctrl-btn" onclick="refreshPortfolioLab()">Recalcular</button>
+            <button class="table-ctrl-btn" onclick="refreshPortfolioLab()">Actualizar historicos</button>
             <button class="table-ctrl-btn" onclick="resetLabScenario()">Reset escenario</button>
             <button class="table-ctrl-btn" onclick="normalizeLabScenario()">Normalizar 100%</button>
           </div>
@@ -1548,28 +1594,58 @@
         <div class="lab-grid-wide">
           <div class="table-card">
             <div class="table-header-row">
-              <span class="table-title">Escenario de pesos</span>
+              <span class="table-title">Pesos actuales y escenario</span>
               <span class="lab-status" id="lab-scenario-total"></span>
             </div>
             <div class="table-scroll"><table><thead><tr><th>Activo</th><th>Tipo</th><th>Peso actual</th><th>Peso simulado</th><th>Total USD</th></tr></thead><tbody id="lab-scenario-body"></tbody></table></div>
           </div>
 
           <div class="chart-card">
-            <div class="chart-title">Comentarios FinPerso</div>
-            <div class="chart-sub">Lectura cuantitativa inicial</div>
-            <div class="lab-note-list" id="lab-comments"></div>
+            <div class="chart-title">Contribucion al riesgo</div>
+            <div class="chart-sub">Cuanto explica cada activo de la volatilidad total</div>
+            <div class="lab-risk-list" id="lab-risk-contrib"></div>
           </div>
         </div>
 
         <div class="lab-grid">
           <div class="chart-card">
-            <div class="chart-title">Actual vs simulado</div>
-            <div class="chart-sub">Metricas calculadas con historicos disponibles</div>
-            <div class="lab-pill-row" id="lab-compare-row"></div>
+            <div class="chart-title">Frontera eficiente</div>
+            <div class="chart-sub">Puntos long-only aleatorios; retornos esperados historicos</div>
+            <canvas class="lab-canvas" id="lab-frontier" width="900" height="420"></canvas>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Drawdown</div>
+            <div class="chart-sub">Caida pico-valle del portfolio actual y simulado</div>
+            <canvas class="lab-canvas" id="lab-drawdown" width="900" height="420"></canvas>
+          </div>
+        </div>
+
+        <div class="lab-grid">
+          <div class="table-card">
+            <div class="table-header-row">
+              <span class="table-title">Matriz de correlaciones</span>
+              <span class="lab-status">retornos diarios alineados</span>
+            </div>
+            <div class="table-scroll"><table id="lab-corr-table"></table></div>
+          </div>
+          <div class="table-card">
+            <div class="table-header-row">
+              <span class="table-title">Comparacion de portfolios</span>
+              <span class="lab-status">actual, simulado, min vol, max Sharpe</span>
+            </div>
+            <div class="table-scroll"><table id="lab-alts-table"></table></div>
+          </div>
+        </div>
+
+        <div class="lab-grid">
+          <div class="chart-card">
+            <div class="chart-title">Lectura FinPerso</div>
+            <div class="chart-sub">Diagnostico cuantitativo y trade-offs</div>
+            <div class="lab-note-list" id="lab-comments"></div>
           </div>
           <div class="chart-card">
             <div class="chart-title">Datos historicos</div>
-            <div class="chart-sub">Estado de carga desde Yahoo Finance</div>
+            <div class="chart-sub">Estado de carga desde Yahoo Finance via Apps Script</div>
             <div class="lab-pill-row" id="lab-data-row"></div>
           </div>
         </div>
@@ -2831,14 +2907,118 @@ function labScenarioStats(useCurrentWeights){
   }
   return labStatsFromReturns(returns,values);
 }
-function renderLabMetrics(){
+function labDot(a,b){return a.reduce((s,x,i)=>s+x*b[i],0);}
+function labMatVec(M,v){return M.map(r=>labDot(r,v));}
+function labCov(a,b){const ma=labMean(a),mb=labMean(b);let s=0;for(let i=0;i<a.length;i++)s+=(a[i]-ma)*(b[i]-mb);return a.length>1?s/(a.length-1):0;}
+function labRandomWeights(n){const x=Array.from({length:n},()=>-Math.log(Math.random()));const s=x.reduce((a,b)=>a+b,0);return x.map(v=>v/s);}
+function labPortStats(w,mu,covM){
+  const ret=labDot(w,mu);
+  const vol=Math.sqrt(Math.max(0,labDot(w,labMatVec(covM,w))));
+  return {ret,vol,sharpe:vol>0?(ret-labRiskFreeRate)/vol:0,w};
+}
+function labDDFromReturns(returns){
+  let nav=1,peak=1,mdd=0,series=[];
+  returns.forEach(r=>{nav*=1+r;peak=Math.max(peak,nav);const d=peak>0?nav/peak-1:0;mdd=Math.min(mdd,d);series.push(d);});
+  return {mdd,series};
+}
+function labAnalytics(){
+  const usable=labScenario.filter(s=>{const h=labMarketData[s.ticker];return h&&Array.isArray(h.data)&&h.data.length>40;});
+  if(usable.length<2)return null;
+  const maps=usable.map(s=>{
+    const map={};
+    labMarketData[s.ticker].data.forEach(r=>{const px=toN(r.adjClose||r.close);if(r.fecha&&px>0)map[r.fecha]=px;});
+    return {asset:s,map};
+  });
+  let dates=Object.keys(maps[0].map).sort();
+  maps.slice(1).forEach(m=>{dates=dates.filter(d=>m.map[d]>0);});
+  if(dates.length<80)return null;
+  const rets=maps.map(()=>[]);
+  const usedDates=[];
+  for(let i=1;i<dates.length;i++){
+    let ok=true,day=[];
+    for(let j=0;j<maps.length;j++){
+      const r=maps[j].map[dates[i]]/maps[j].map[dates[i-1]]-1;
+      if(!isFinite(r)||Math.abs(r)>0.6)ok=false;
+      day.push(r);
+    }
+    if(ok){usedDates.push(dates[i]);day.forEach((r,j)=>rets[j].push(r));}
+  }
+  if(usedDates.length<80)return null;
+  const n=maps.length;
+  const mu=rets.map(r=>labMean(r)*252);
+  const covM=Array.from({length:n},(_,i)=>Array.from({length:n},(_,j)=>labCov(rets[i],rets[j])*252));
+  const normWeights=arr=>{const s=arr.reduce((a,b)=>a+b,0);return s>0?arr.map(v=>v/s):Array(n).fill(1/n);};
+  const currentW=normWeights(maps.map(m=>m.asset.currentWeight));
+  const simW=normWeights(maps.map(m=>m.asset.weight));
+  const current=labPortStats(currentW,mu,covM);
+  const sim=labPortStats(simW,mu,covM);
+  const equal=labPortStats(Array(n).fill(1/n),mu,covM);
+  let minVol={vol:Infinity},maxSharpe={sharpe:-Infinity},points=[];
+  for(let i=0;i<4500;i++){
+    const w=labRandomWeights(n),s=labPortStats(w,mu,covM);
+    points.push(s);
+    if(s.vol<minVol.vol)minVol=s;
+    if(s.sharpe>maxSharpe.sharpe)maxSharpe=s;
+  }
+  const portReturns=w=>rets[0].map((_,t)=>w.reduce((sum,wi,i)=>sum+wi*rets[i][t],0));
+  const currentDD=labDDFromReturns(portReturns(currentW));
+  const simDD=labDDFromReturns(portReturns(simW));
+  const marginal=labMatVec(covM,currentW);
+  const riskContrib=marginal.map((x,i)=>current.vol>0?currentW[i]*x/(current.vol*current.vol):0);
+  const corr=Array.from({length:n},(_,i)=>Array.from({length:n},(_,j)=>{
+    const denom=labStd(rets[i])*labStd(rets[j]);
+    return denom>0?labCov(rets[i],rets[j])/denom:0;
+  }));
+  return {assets:maps.map(m=>m.asset),dates:usedDates,rets,mu,covM,current,sim,equal,minVol,maxSharpe,points,currentDD,simDD,riskContrib,corr};
+}
+function labSetCanvasSize(canvas){
+  const dpr=window.devicePixelRatio||1;
+  const rect=canvas.getBoundingClientRect();
+  const w=Math.max(320,Math.floor(rect.width*dpr));
+  const h=Math.max(240,Math.floor(rect.height*dpr));
+  if(canvas.width!==w)canvas.width=w;
+  if(canvas.height!==h)canvas.height=h;
+  return {ctx:canvas.getContext('2d'),W:w,H:h,dpr};
+}
+function drawLabScatter(analytics){
+  const c=document.getElementById('lab-frontier');if(!c)return;
+  const {ctx,W,H}=labSetCanvasSize(c);ctx.clearRect(0,0,W,H);ctx.fillStyle='rgba(0,0,0,0.10)';ctx.fillRect(0,0,W,H);
+  if(!analytics){ctx.fillStyle='#888';ctx.font='14px sans-serif';ctx.fillText('Esperando historicos alineados',24,32);return;}
+  const special=[{...analytics.current,label:'Actual',color:'#fbbf24'},{...analytics.sim,label:'Sim',color:'#60a5fa'},{...analytics.minVol,label:'Min Vol',color:'#4ade80'},{...analytics.maxSharpe,label:'Max Sharpe',color:'#a78bfa'}];
+  const xs=analytics.points.map(p=>p.vol).concat(special.map(p=>p.vol)),ys=analytics.points.map(p=>p.ret).concat(special.map(p=>p.ret));
+  let xmin=Math.min(...xs)*0.9,xmax=Math.max(...xs)*1.1,ymin=Math.min(...ys)*1.1,ymax=Math.max(...ys)*1.1;if(ymin>0)ymin=0;
+  const X=x=>58+(x-xmin)/(xmax-xmin)*(W-92),Y=y=>H-46-(y-ymin)/(ymax-ymin)*(H-76);
+  ctx.strokeStyle='rgba(148,163,184,0.18)';ctx.lineWidth=1;
+  for(let i=0;i<5;i++){const y=28+i*(H-76)/4;ctx.beginPath();ctx.moveTo(48,y);ctx.lineTo(W-24,y);ctx.stroke();const x=58+i*(W-92)/4;ctx.beginPath();ctx.moveTo(x,24);ctx.lineTo(x,H-46);ctx.stroke();}
+  ctx.fillStyle='rgba(96,165,250,0.28)';analytics.points.forEach(p=>{ctx.beginPath();ctx.arc(X(p.vol),Y(p.ret),2,0,Math.PI*2);ctx.fill();});
+  special.forEach(p=>{ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(X(p.vol),Y(p.ret),7,0,Math.PI*2);ctx.fill();ctx.fillStyle='#e5e7eb';ctx.font='13px sans-serif';ctx.fillText(p.label,X(p.vol)+10,Y(p.ret)-8);});
+  ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText('Volatilidad anual',W/2-46,H-14);ctx.save();ctx.translate(16,H/2+50);ctx.rotate(-Math.PI/2);ctx.fillText('Retorno anual esperado',0,0);ctx.restore();
+}
+function drawLabDrawdown(analytics){
+  const c=document.getElementById('lab-drawdown');if(!c)return;
+  const {ctx,W,H}=labSetCanvasSize(c);ctx.clearRect(0,0,W,H);ctx.fillStyle='rgba(0,0,0,0.10)';ctx.fillRect(0,0,W,H);
+  if(!analytics){ctx.fillStyle='#888';ctx.font='14px sans-serif';ctx.fillText('Esperando historicos alineados',24,32);return;}
+  const series=[{label:'Actual',data:analytics.currentDD.series,color:'#f87171'},{label:'Simulado',data:analytics.simDD.series,color:'#60a5fa'}];
+  const ymin=Math.min(...series.flatMap(s=>s.data),-0.01),ymax=0;
+  const X=(i,n)=>52+i/Math.max(1,n-1)*(W-78),Y=y=>H-44-(y-ymin)/(ymax-ymin)*(H-72);
+  ctx.strokeStyle='rgba(148,163,184,0.18)';
+  for(let i=0;i<5;i++){const y=28+i*(H-72)/4;ctx.beginPath();ctx.moveTo(48,y);ctx.lineTo(W-24,y);ctx.stroke();}
+  series.forEach(s=>{ctx.strokeStyle=s.color;ctx.lineWidth=2;ctx.beginPath();s.data.forEach((v,i)=>{const x=X(i,s.data.length),y=Y(v);if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y);});ctx.stroke();});
+  ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.fillText('Max DD actual '+labPct(analytics.currentDD.mdd,1)+' / sim '+labPct(analytics.simDD.mdd,1),56,22);
+}
+function renderLabMetrics(a){
   const el=document.getElementById('lab-metrics-row');if(!el)return;
   const c=labConcentration(),stats=labHistoricalStats();
+  const live=a?a.current:null;
   el.innerHTML=[
-    labMetricCard('Top 3',labPct(c.top3,1),'concentracion en principales',c.top3>0.65?'neg':''),
-    labMetricCard('HHI',labNum(c.hhi,2),'0 diversificado / 1 concentrado',c.hhi>0.25?'neg':''),
-    labMetricCard('Vol',stats?labPct(stats.annVol,1):'--','volatilidad anualizada',stats&&stats.annVol>0.35?'neg':''),
-    labMetricCard('Sharpe',stats?labNum(stats.sharpe,2):'--','rf anual '+(labRiskFreeRate*100).toFixed(1)+'%',stats&&stats.sharpe>=1?'pos':stats&&stats.sharpe<0?'neg':'')
+    labMetricCard('Valor',fmtUSD(c.total),'portfolio total USD'),
+    labMetricCard('Ret anual',live?labPct(live.ret,1):'--',a?'estimado por tickers':'esperando historicos',live&&live.ret<0?'neg':''),
+    labMetricCard('Vol anual',live?labPct(live.vol,1):(stats?labPct(stats.annVol,1):'--'),'riesgo realizado',live&&live.vol>0.35?'neg':''),
+    labMetricCard('Sharpe',live?labNum(live.sharpe,2):(stats?labNum(stats.sharpe,2):'--'),'exceso retorno / vol',live&&live.sharpe>=1?'pos':live&&live.sharpe<0.5?'neg':''),
+    labMetricCard('Max DD',a?labPct(a.currentDD.mdd,1):(stats?labPct(stats.maxDD,1):'--'),'caida pico-valle',a&&a.currentDD.mdd<-0.30?'neg':''),
+    labMetricCard('Top 3',labPct(c.top3,1),'concentracion principal',c.top3>0.65?'neg':''),
+    labMetricCard('HHI',labNum(c.hhi,2),'mayor = menos diversificacion',c.hhi>0.25?'neg':''),
+    labMetricCard('Datos',a?String(a.dates.length):'--','ruedas alineadas')
   ].join('');
 }
 function renderLabScenario(){
@@ -2849,31 +3029,82 @@ function renderLabScenario(){
   if(!labScenario.length){tbody.innerHTML='<tr><td colspan="5" class="cell-muted" style="text-align:center;padding:24px">No hay activos invertibles para simular.</td></tr>';return;}
   tbody.innerHTML=labScenario.map((s,i)=>`<tr><td><span class="ticker-name">${labEsc(s.name)}</span><span class="ticker-code">${labEsc(s.ticker)}</span></td><td><span class="badge">${labEsc(s.tipo)}</span></td><td class="mono">${(s.currentWeight*100).toFixed(1)}%</td><td><input class="lab-scenario-input" type="number" min="0" max="100" step="0.1" value="${(s.weight*100).toFixed(1)}" onchange="updateLabWeight(${i},this.value)" /></td><td class="mono">${fmtUSD(s.totalUSD)}</td></tr>`).join('');
 }
-function renderLabComments(){
+function renderLabComments(a){
   const el=document.getElementById('lab-comments');if(!el)return;
-  const c=labConcentration(),stats=labHistoricalStats(),sim=labScenarioStats(false),current=labScenarioStats(true),notes=[];
+  const c=labConcentration(),stats=labHistoricalStats(),sim=a?a.sim:labScenarioStats(false),current=a?a.current:labScenarioStats(true),notes=[];
   if(c.top1>0.35)notes.push(['Concentracion','La posicion principal pesa mas de 35%. El resultado total depende bastante de un solo activo.']);
   if(c.top3>0.65)notes.push(['Top 3','Las tres mayores posiciones explican mas de 65% del portfolio. La diversificacion real puede ser baja.']);
   if(c.cashRatio>0.25)notes.push(['Cash','El cash es relevante. Baja volatilidad, pero tambien puede generar costo de oportunidad.']);
-  if(stats&&stats.maxDD<-0.25)notes.push(['Drawdown','El historial muestra una caida maxima profunda. Es clave compararlo con tu tolerancia al riesgo.']);
-  if(stats&&stats.sharpe!==null&&stats.sharpe<0)notes.push(['Sharpe','El retorno ajustado por riesgo fue negativo en el periodo disponible.']);
-  if(stats&&stats.sharpe!==null&&stats.sharpe>1)notes.push(['Sharpe','El retorno ajustado por riesgo fue saludable en el periodo disponible.']);
+  const dd=a?a.currentDD.mdd:(stats?stats.maxDD:null);
+  if(dd!==null&&dd<-0.25)notes.push(['Drawdown','El historial muestra una caida maxima profunda. Es clave compararlo con tu tolerancia al riesgo.']);
+  const sh=current?current.sharpe:(stats?stats.sharpe:null);
+  if(sh!==null&&sh<0)notes.push(['Sharpe','El retorno ajustado por riesgo fue negativo en el periodo disponible.']);
+  if(sh!==null&&sh>1)notes.push(['Sharpe','El retorno ajustado por riesgo fue saludable en el periodo disponible.']);
+  if(a){
+    const maxRisk=Math.max(...a.riskContrib);
+    const idx=a.riskContrib.indexOf(maxRisk);
+    if(a.assets[idx])notes.push(['Riesgo','El activo que mas explica la volatilidad es '+a.assets[idx].ticker+'. Mira contribucion al riesgo, no solo peso.']);
+  }
   if(current&&sim&&sim.sharpe!==null&&current.sharpe!==null&&sim.sharpe>current.sharpe)notes.push(['Escenario','El escenario simulado mejora el Sharpe usando los historicos descargados.']);
+  if(a&&a.maxSharpe&&a.maxSharpe.sharpe>current.sharpe+0.25)notes.push(['Frontera','La nube historica encuentra combinaciones con mejor Sharpe. No es prediccion, pero senala que el sizing actual merece revision.']);
   if(!Object.keys(labMarketData).length)notes.push(['Datos','Para simulacion por ticker hay que desplegar el Apps Script actualizado con el endpoint MarketData.']);
   if(!notes.length)notes.push(['Lectura','El portfolio no dispara alertas fuertes en las reglas iniciales. Siguiente paso: beta, correlaciones y stress tests.']);
   el.innerHTML=notes.map(n=>`<div class="lab-note"><strong>${labEsc(n[0])}.</strong> ${labEsc(n[1])}</div>`).join('');
 }
-function renderLabCompare(){
-  const el=document.getElementById('lab-compare-row'),dataEl=document.getElementById('lab-data-row');if(!el||!dataEl)return;
-  const current=labScenarioStats(true),sim=labScenarioStats(false);
-  if(current&&sim){
-    el.innerHTML=[`Sharpe actual ${labNum(current.sharpe,2)}`,`Sharpe sim ${labNum(sim.sharpe,2)}`,`Vol actual ${labPct(current.annVol,1)}`,`Vol sim ${labPct(sim.annVol,1)}`,`Ret sim ${labPct(sim.annReturn,1)}`].map(t=>`<span class="lab-pill">${labEsc(t)}</span>`).join('');
-  } else el.innerHTML='<span class="lab-pill">Esperando historicos por ticker</span>';
-  dataEl.innerHTML=labScenario.slice(0,10).map(s=>{const h=labMarketData[s.ticker],count=h&&h.data?h.data.length:0;return `<span class="lab-pill">${labEsc(s.ticker)} ${count?count+' obs':'sin datos'}</span>`;}).join('')||'<span class="lab-pill">Sin activos</span>';
+function renderLabRiskContrib(a){
+  const el=document.getElementById('lab-risk-contrib');if(!el)return;
+  if(!a){el.innerHTML='<div class="lab-note">Esperando historicos para calcular contribucion al riesgo.</div>';return;}
+  const max=Math.max(...a.riskContrib.map(x=>Math.abs(x)),0.01);
+  el.innerHTML=a.assets.map((asset,i)=>{
+    const rc=a.riskContrib[i]||0;
+    return `<div class="lab-risk-row"><strong>${labEsc(asset.ticker)}</strong><div class="lab-risk-bar"><i style="width:${Math.max(0,Math.min(100,Math.abs(rc)/max*100))}%"></i></div><span class="${rc<0?'pos':rc>0.25?'neg':''}">${labPct(rc,1)}</span></div>`;
+  }).join('');
+}
+function renderLabCorr(a){
+  const el=document.getElementById('lab-corr-table');if(!el)return;
+  if(!a){el.innerHTML='<tr><td class="cell-muted" style="padding:24px;text-align:center">Esperando historicos alineados.</td></tr>';return;}
+  let html='<thead><tr><th></th>'+a.assets.map(x=>`<th>${labEsc(x.ticker)}</th>`).join('')+'</tr></thead><tbody>';
+  for(let i=0;i<a.assets.length;i++){
+    html+=`<tr><td><strong>${labEsc(a.assets[i].ticker)}</strong></td>`;
+    for(let j=0;j<a.assets.length;j++){
+      const v=a.corr[i][j],alpha=Math.min(0.85,Math.abs(v)*0.55+0.08);
+      const bg=v>=0?`rgba(74,222,128,${alpha})`:`rgba(248,113,113,${alpha})`;
+      html+=`<td class="lab-corr-cell" style="background:${bg}">${v.toFixed(2)}</td>`;
+    }
+    html+='</tr>';
+  }
+  el.innerHTML=html+'</tbody>';
+}
+function renderLabAlts(a){
+  const el=document.getElementById('lab-alts-table');if(!el)return;
+  if(!a){el.innerHTML='<tr><td class="cell-muted" style="padding:24px;text-align:center">Esperando historicos alineados.</td></tr>';return;}
+  const rows=[
+    ['Actual',a.current],
+    ['Simulado',a.sim],
+    ['Equal weight',a.equal],
+    ['Min vol',a.minVol],
+    ['Max Sharpe',a.maxSharpe]
+  ];
+  el.innerHTML='<thead><tr><th>Portfolio</th><th>Ret anual</th><th>Vol anual</th><th>Sharpe</th><th>Mayor peso</th></tr></thead><tbody>'+
+    rows.map(([name,s])=>{
+      const idx=s.w.indexOf(Math.max(...s.w));
+      return `<tr><td><strong>${name}</strong></td><td class="mono ${s.ret<0?'neg':'pos'}">${labPct(s.ret,1)}</td><td class="mono">${labPct(s.vol,1)}</td><td class="mono ${s.sharpe<0.5?'neg':s.sharpe>1?'pos':''}">${labNum(s.sharpe,2)}</td><td>${labEsc(a.assets[idx].ticker)} ${(s.w[idx]*100).toFixed(1)}%</td></tr>`;
+    }).join('')+'</tbody>';
+}
+function renderLabCompare(a){
+  const el=document.getElementById('lab-compare-row'),dataEl=document.getElementById('lab-data-row');
+  const current=a?a.current:labScenarioStats(true),sim=a?a.sim:labScenarioStats(false);
+  if(el&&current&&sim){
+    const cVol=current.vol??current.annVol,sVol=sim.vol??sim.annVol,sRet=sim.ret??sim.annReturn;
+    el.innerHTML=[`Sharpe actual ${labNum(current.sharpe,2)}`,`Sharpe sim ${labNum(sim.sharpe,2)}`,`Vol actual ${labPct(cVol,1)}`,`Vol sim ${labPct(sVol,1)}`,`Ret sim ${labPct(sRet,1)}`].map(t=>`<span class="lab-pill">${labEsc(t)}</span>`).join('');
+  } else if(el) el.innerHTML='<span class="lab-pill">Esperando historicos por ticker</span>';
+  if(dataEl)dataEl.innerHTML=labScenario.slice(0,10).map(s=>{const h=labMarketData[s.ticker],count=h&&h.data?h.data.length:0;return `<span class="lab-pill">${labEsc(s.ticker)} ${count?count+' obs':'sin datos'}</span>`;}).join('')||'<span class="lab-pill">Sin activos</span>';
 }
 function renderPortfolioLab(){
   if(!document.getElementById('sec-lab'))return;
-  buildLabScenario();renderLabMetrics();renderLabScenario();renderLabCompare();renderLabComments();
+  buildLabScenario();
+  const a=labAnalytics();
+  renderLabMetrics(a);renderLabScenario();renderLabCompare(a);renderLabRiskContrib(a);renderLabCorr(a);renderLabAlts(a);drawLabScatter(a);drawLabDrawdown(a);renderLabComments(a);
   if(!Object.keys(labMarketData).length&&!labLoading&&!labDataAttempted&&portfolio.length)loadLabMarketData();
 }
 async function loadLabMarketData(){
