@@ -968,6 +968,62 @@
     font-size: var(--text-xs);
     font-family: 'DM Mono', monospace;
   }
+  .lab-add-assets {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: var(--space-2);
+    align-items: center;
+    padding: var(--space-3) var(--space-5);
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.012);
+  }
+  .lab-add-input {
+    min-width: 0;
+  }
+  .lab-add-assets .table-ctrl-btn {
+    min-height: 38px;
+  }
+  .lab-asset-cell {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+  .lab-asset-main {
+    min-width: 0;
+  }
+  .lab-new-tag {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 5px;
+    padding: 2px 6px;
+    border: 1px solid rgba(52,211,153,0.28);
+    border-radius: var(--radius-full);
+    background: rgba(52,211,153,0.10);
+    color: var(--green);
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .lab-remove-candidate {
+    width: 26px;
+    height: 26px;
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-input);
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: all var(--dur-fast) var(--ease);
+  }
+  .lab-remove-candidate:hover {
+    color: var(--red);
+    border-color: rgba(248,113,113,0.35);
+    background: rgba(248,113,113,0.10);
+  }
   .lab-scenario-input {
     width: 82px;
     background: var(--bg-input);
@@ -1300,6 +1356,7 @@
     .lab-canvas { height: 260px; }
     .lab-suggested-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .lab-constraints { grid-template-columns: 1fr; }
+    .lab-add-assets { grid-template-columns: 1fr; }
     .lab-portfolio-layout { grid-template-columns: 1fr; }
     .lab-pie { width: 132px; }
     .lab-pie-legend { grid-template-columns: 1fr; }
@@ -1994,6 +2051,11 @@
               <span class="table-title">Pesos actuales y escenario</span>
               <span class="lab-status" id="lab-scenario-total"></span>
             </div>
+            <div class="lab-add-assets">
+              <input class="lab-control lab-add-input" id="lab-add-ticker" type="text" placeholder="AAPL, NVDA, AMZN" autocapitalize="characters" onkeydown="if(event.key==='Enter')addLabCandidateAssets()" />
+              <button class="table-ctrl-btn" onclick="addLabCandidateAssets()" title="Agrega tickers al universo simulado">Agregar activo</button>
+              <button class="table-ctrl-btn" onclick="clearLabCandidateAssets()" title="Quita los activos nuevos del escenario">Limpiar nuevos</button>
+            </div>
             <div class="lab-table-fit"><table class="lab-scenario-table"><thead><tr><th>Activo</th><th>Tipo</th><th>Peso actual</th><th>Peso simulado</th></tr></thead><tbody id="lab-scenario-body"></tbody></table></div>
           </div>
 
@@ -2237,9 +2299,12 @@ let labMarketData={},labScenario=[],labRange='2y',labRiskFreeRate=0.04,labLoadin
 let labConstraints={maxAsset:0.35,maxSingle:0.25,maxEtf:0.35,maxCrypto:0.10,maxTop3:0.75,maxHhi:0.35,minSingle:0};
 let labSelectedPortfolio='maxSharpeConstrained';
 let labLastAnalytics=null;
+const LAB_CANDIDATE_STORE='finperso_lab_candidates_v1';
 const LAB_SYMBOL_ALIASES={ADGO:'AGRO'};
 const LAB_MIN_OBS=80;
 const LAB_ETF_TICKERS=new Set(['SPY','VOO','VTI','QQQ','IWM','DIA','VEA','VWO','ACWI','URTH','EWY','EEM','IBIT','GLD','SLV','TLT','HYG','LQD']);
+let labCandidateAssets=[];
+try{labCandidateAssets=JSON.parse(localStorage.getItem(LAB_CANDIDATE_STORE)||'[]').filter(x=>x&&x.ticker);}catch(e){labCandidateAssets=[];}
 
 const portfolioCols=[
   {key:'Activo',label:'Activo',visible:true},{key:'Tipo',label:'Tipo',visible:true},
@@ -3276,16 +3341,45 @@ function labAnalysisSymbol(ticker){
   const clean=String(ticker||'').toUpperCase().trim().replace(/\.BA$/,'');
   return LAB_SYMBOL_ALIASES[clean]||clean;
 }
+function labCleanTicker(v){
+  return String(v||'').toUpperCase().trim().replace(/\s+/g,'').replace(/[^A-Z0-9.^=_-]/g,'');
+}
+function labInferType(ticker){
+  const kind=labAssetKind({ticker,tipo:'Equity',name:ticker});
+  if(kind==='crypto')return 'Crypto';
+  if(kind==='etf')return 'ETF';
+  return 'Equity';
+}
+function labSaveCandidates(){
+  localStorage.setItem(LAB_CANDIDATE_STORE,JSON.stringify(labCandidateAssets));
+}
+function labCandidateRows(existingTickers){
+  return labCandidateAssets
+    .filter(x=>x&&x.ticker&&!existingTickers.has(x.ticker))
+    .map(x=>({
+      ticker:x.ticker,
+      symbol:x.symbol||labAnalysisSymbol(x.ticker),
+      name:x.name||x.ticker,
+      tipo:x.tipo||labInferType(x.ticker),
+      totalUSD:0,
+      currentWeight:0,
+      weight:0,
+      isCandidate:true
+    }));
+}
 function buildLabScenario(force=false){
   const rows=labInvestableRows();
-  const key=rows.map(p=>p['Ticker']).join('|');
-  if(!force&&labScenario.length&&labScenario._key===key)return;
+  const previous=new Map(labScenario.map(s=>[s.ticker,s.weight]));
   const total=rows.reduce((a,p)=>a+toN(p['Total USD']),0);
-  labScenario=rows.map(p=>{
+  const existingTickers=new Set(rows.map(p=>String(p['Ticker']||'').toUpperCase()));
+  const realRows=rows.map(p=>{
     const currentWeight=total>0?toN(p['Total USD'])/total:0;
-    return {ticker:p['Ticker'],symbol:labAnalysisSymbol(p['Ticker']),name:p['Nombre']||p['Ticker'],tipo:p['Tipo']||'Otro',totalUSD:toN(p['Total USD']),currentWeight,weight:currentWeight};
+    const ticker=String(p['Ticker']||'').toUpperCase();
+    return {ticker,symbol:labAnalysisSymbol(ticker),name:p['Nombre']||ticker,tipo:p['Tipo']||'Otro',totalUSD:toN(p['Total USD']),currentWeight,weight:force?currentWeight:(previous.has(ticker)?previous.get(ticker):currentWeight),isCandidate:false};
   });
-  labScenario._key=key;
+  const candidates=labCandidateRows(existingTickers).map(s=>({...s,weight:force?0:(previous.has(s.ticker)?previous.get(s.ticker):0)}));
+  labScenario=realRows.concat(candidates);
+  labScenario._key=labScenario.map(p=>p.ticker).join('|');
 }
 function labMean(arr){return arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:0;}
 function labStd(arr){if(arr.length<2)return 0;const m=labMean(arr);return Math.sqrt(arr.reduce((a,b)=>a+Math.pow(b-m,2),0)/(arr.length-1));}
@@ -3347,8 +3441,8 @@ function labCov(a,b){const ma=labMean(a),mb=labMean(b);let s=0;for(let i=0;i<a.l
 function labRandomWeights(n){const x=Array.from({length:n},()=>-Math.log(Math.random()));const s=x.reduce((a,b)=>a+b,0);return x.map(v=>v/s);}
 function labAssetKind(asset){
   const tipo=String(asset.tipo||'').toLowerCase(),ticker=String(asset.ticker||'').toUpperCase();
-  if(tipo.includes('crypto')||['BTC','ETH','IBIT','ETHE'].includes(ticker))return 'crypto';
-  if(LAB_ETF_TICKERS.has(ticker)||String(asset.name||'').toLowerCase().includes('ishares'))return 'etf';
+  if(tipo.includes('crypto')||['BTC','ETH','BTC-USD','ETH-USD','IBIT','ETHE'].includes(ticker))return 'crypto';
+  if(tipo.includes('etf')||tipo.includes('fondo')||LAB_ETF_TICKERS.has(ticker)||String(asset.name||'').toLowerCase().includes('ishares'))return 'etf';
   if(tipo.includes('equity'))return 'single';
   return 'other';
 }
@@ -3584,7 +3678,9 @@ function renderLabScenario(){
   if(!labScenario.length){tbody.innerHTML='<tr><td colspan="4" class="cell-muted" style="text-align:center;padding:24px">No hay activos invertibles para simular.</td></tr>';return;}
   tbody.innerHTML=labScenario.map((s,i)=>{
     const kind=labTypeClass(s.tipo,s.ticker,s.name);
-    return `<tr><td><span class="ticker-name">${labEsc(s.name)}</span><span class="ticker-code">${labEsc(s.ticker)}</span></td><td><span class="lab-type-badge ${kind}">${labEsc(s.tipo)}</span></td><td class="mono">${(s.currentWeight*100).toFixed(1)}%</td><td><input class="lab-scenario-input" type="number" min="0" max="100" step="0.1" value="${(s.weight*100).toFixed(1)}" onchange="updateLabWeight(${i},this.value)" /></td></tr>`;
+    const remove=s.isCandidate?`<button class="lab-remove-candidate" onclick="removeLabCandidateAsset('${labEsc(s.ticker)}')" title="Quitar del escenario" aria-label="Quitar ${labEsc(s.ticker)}"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>`:'';
+    const tag=s.isCandidate?'<span class="lab-new-tag">Nuevo</span>':'';
+    return `<tr><td><div class="lab-asset-cell"><div class="lab-asset-main"><span class="ticker-name">${labEsc(s.name)}</span><span class="ticker-code">${labEsc(s.ticker)}</span>${tag}</div>${remove}</div></td><td><span class="lab-type-badge ${kind}">${labEsc(s.tipo)}</span></td><td class="mono">${(s.currentWeight*100).toFixed(1)}%</td><td><input class="lab-scenario-input" type="number" min="0" max="100" step="0.1" value="${(s.weight*100).toFixed(1)}" onchange="updateLabWeight(${i},this.value)" /></td></tr>`;
   }).join('');
 }
 function renderLabComments(a){
@@ -3743,21 +3839,27 @@ function renderPortfolioLab(){
   const a=labAnalytics();
   labLastAnalytics=a;
   renderLabMetrics(a);renderLabScenario();renderLabConstraints(a);renderLabSuggested(a);renderLabQuality(a);renderLabRiskContrib(a);renderLabCorr(a);renderLabAlts(a);drawLabScatter(a);drawLabDrawdown(a);renderLabComments(a);
-  if(!Object.keys(labMarketData).length&&!labLoading&&!labDataAttempted&&portfolio.length)loadLabMarketData();
+  const needsData=labScenario.some(s=>!labMarketData[s.ticker]||!Array.isArray(labMarketData[s.ticker].data)||labMarketData[s.ticker].data.length<LAB_MIN_OBS);
+  if(needsData&&!labLoading&&!labDataAttempted)loadLabMarketData();
 }
 async function loadLabMarketData(){
-  const rows=labInvestableRows().slice(0,8);if(!rows.length)return;
+  buildLabScenario();
+  const rows=labScenario
+    .filter(s=>!labMarketData[s.ticker]||!Array.isArray(labMarketData[s.ticker].data)||labMarketData[s.ticker].data.length<LAB_MIN_OBS)
+    .slice(0,16);
+  if(!rows.length)return;
   labDataAttempted=true;
   labLoading=true;const status=document.getElementById('lab-status');if(status)status.textContent='Cargando historicos...';
   try{
     const settled=await Promise.allSettled(rows.map(p=>{
-      const ticker=p['Ticker'];
-      const symbol=labAnalysisSymbol(ticker);
+      const ticker=p.ticker;
+      const symbol=p.symbol||labAnalysisSymbol(ticker);
       const url=API_URL+'?sheet=MarketData&ticker='+encodeURIComponent(ticker)+'&symbol='+encodeURIComponent(symbol)+'&range='+encodeURIComponent(labRange)+'&_='+Date.now();
       return fetch(url).then(r=>r.json());
     }));
-    settled.forEach((res,i)=>{const ticker=rows[i]['Ticker'];if(res.status==='fulfilled'&&!res.value.error)labMarketData[ticker]=res.value;});
-    if(status)status.textContent='Historicos cargados';
+    let ok=0;
+    settled.forEach((res,i)=>{const ticker=rows[i].ticker;if(res.status==='fulfilled'&&!res.value.error){labMarketData[ticker]=res.value;ok++;}});
+    if(status)status.textContent=ok===rows.length?'Historicos cargados':'Historicos parciales '+ok+'/'+rows.length;
   }catch(e){if(status)status.textContent='MarketData no disponible';}
   labLoading=false;renderPortfolioLab();
 }
@@ -3790,6 +3892,47 @@ function setLabConstraint(key,v){
 function resetLabScenario(){buildLabScenario(true);const status=document.getElementById('lab-status');if(status)status.textContent='Pesos restaurados al portfolio actual';renderPortfolioLab();}
 function normalizeLabScenario(){const total=labScenario.reduce((a,s)=>a+s.weight,0);if(total>0)labScenario.forEach(s=>s.weight=s.weight/total);const status=document.getElementById('lab-status');if(status)status.textContent='Pesos simulados reescalados a 100%';renderPortfolioLab();}
 function updateLabWeight(i,v){if(!labScenario[i])return;labScenario[i].weight=Math.max(0,labParseNumber(v)/100);renderPortfolioLab();}
+function addLabCandidateAssets(){
+  const input=document.getElementById('lab-add-ticker');if(!input)return;
+  const tokens=String(input.value||'').split(/[,\s;]+/).map(labCleanTicker).filter(Boolean);
+  if(!tokens.length)return;
+  const real=new Set(labInvestableRows().map(p=>String(p['Ticker']||'').toUpperCase()));
+  const existing=new Set(labCandidateAssets.map(x=>x.ticker));
+  const added=[];
+  tokens.forEach(ticker=>{
+    if(real.has(ticker)||existing.has(ticker))return;
+    const asset={ticker,symbol:labAnalysisSymbol(ticker),name:ticker,tipo:labInferType(ticker),addedAt:Date.now()};
+    labCandidateAssets.push(asset);
+    existing.add(ticker);
+    added.push(ticker);
+  });
+  input.value='';
+  const status=document.getElementById('lab-status');
+  if(added.length){
+    labSaveCandidates();
+    labDataAttempted=false;
+    if(status)status.textContent='Agregados al escenario: '+added.join(', ');
+  }else if(status)status.textContent='Esos tickers ya estaban en el escenario';
+  renderPortfolioLab();
+}
+function removeLabCandidateAsset(ticker){
+  const clean=labCleanTicker(ticker);
+  labCandidateAssets=labCandidateAssets.filter(x=>x.ticker!==clean);
+  delete labMarketData[clean];
+  labSaveCandidates();
+  labDataAttempted=false;
+  const status=document.getElementById('lab-status');if(status)status.textContent='Quitado del escenario: '+clean;
+  renderPortfolioLab();
+}
+function clearLabCandidateAssets(){
+  if(!labCandidateAssets.length)return;
+  labCandidateAssets.forEach(x=>{delete labMarketData[x.ticker];});
+  labCandidateAssets=[];
+  labSaveCandidates();
+  labDataAttempted=false;
+  const status=document.getElementById('lab-status');if(status)status.textContent='Activos nuevos eliminados';
+  renderPortfolioLab();
+}
 
 const titles={resumen:'Resumen',portfolio:'Posiciones',lab:'Portfolio Lab',operaciones:'Operaciones',efectivo:'Efectivo'};
 function toggleSidebar(){const layout=document.querySelector('.layout');const collapsed=layout.classList.toggle('sidebar-collapsed');localStorage.setItem('sidebarCollapsed',collapsed?'1':'0');}
