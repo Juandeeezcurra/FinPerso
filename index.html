@@ -808,6 +808,68 @@
     font-family: 'DM Mono', monospace;
     transition: all var(--dur-fast) var(--ease);
   }
+  .lab-select-wrap {
+    position: relative;
+  }
+  .lab-select-btn {
+    width: 74px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    padding: 6px 10px;
+    font-size: var(--text-xs);
+    font-family: 'DM Mono', monospace;
+    cursor: pointer;
+    transition: all var(--dur-fast) var(--ease);
+  }
+  .lab-select-btn:hover,
+  .lab-select-btn.active {
+    border-color: var(--accent);
+    background: var(--accent-muted);
+    box-shadow: 0 0 0 3px rgba(167,139,250,0.10);
+  }
+  .lab-select-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+  .lab-select-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 30;
+    width: 92px;
+    display: none;
+    overflow: hidden;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: #111118;
+    box-shadow: var(--shadow-lg);
+  }
+  .lab-select-wrap.open .lab-select-menu {
+    display: block;
+  }
+  .lab-select-option {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: var(--text-secondary);
+    padding: 9px 12px;
+    text-align: left;
+    font-family: 'DM Mono', monospace;
+    font-size: var(--text-xs);
+    cursor: pointer;
+  }
+  .lab-select-option:hover,
+  .lab-select-option.active {
+    color: var(--text);
+    background: var(--accent-muted);
+  }
   .lab-control:hover,
   .lab-control:focus {
     border-color: var(--accent);
@@ -816,7 +878,6 @@
     outline: none;
     box-shadow: 0 0 0 3px rgba(167,139,250,0.10);
   }
-  #lab-range { width: 74px; }
   #lab-rf { width: 78px; text-align: center; }
   .lab-toolbar .table-ctrl-btn {
     min-height: 38px;
@@ -918,6 +979,14 @@
     font-size: var(--text-xs);
     text-align: center;
   }
+  .lab-scenario-input::-webkit-outer-spin-button,
+  .lab-scenario-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .lab-scenario-input[type=number] {
+    -moz-appearance: textfield;
+  }
   .lab-status {
     color: var(--text-tertiary);
     font-size: var(--text-xs);
@@ -975,16 +1044,26 @@
     display: grid;
     grid-template-columns: 1fr;
     gap: var(--space-2);
+    margin-top: var(--space-2);
   }
   .lab-constraint-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 76px;
-    gap: var(--space-3);
+    grid-template-columns: minmax(0, 1fr) 82px;
+    gap: var(--space-4);
     align-items: center;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: rgba(255,255,255,0.015);
+  }
+  .lab-constraint-row:hover {
+    border-color: rgba(167,139,250,0.30);
+    background: rgba(167,139,250,0.055);
   }
   .lab-constraint-row span {
-    color: var(--text-secondary);
+    color: var(--text);
     font-size: var(--text-xs);
+    font-weight: 600;
   }
   .lab-constraint-row small {
     display: block;
@@ -993,6 +1072,7 @@
     font-family: 'DM Mono', monospace;
     font-size: var(--text-2xs);
     line-height: 1.25;
+    font-weight: 400;
   }
   .lab-constraint-row .lab-scenario-input {
     width: 100%;
@@ -1051,10 +1131,10 @@
     padding-left: var(--space-3);
     padding-right: var(--space-3);
   }
-  .lab-scenario-table th:nth-child(1) { width: 34%; }
-  .lab-scenario-table th:nth-child(2) { width: 18%; }
+  .lab-scenario-table th:nth-child(1) { width: 38%; }
+  .lab-scenario-table th:nth-child(2) { width: 16%; }
   .lab-scenario-table th:nth-child(3) { width: 22%; }
-  .lab-scenario-table th:nth-child(4) { width: 26%; }
+  .lab-scenario-table th:nth-child(4) { width: 24%; }
   .lab-scenario-table th,
   .lab-scenario-table td {
     text-align: center;
@@ -1112,11 +1192,11 @@
     white-space: nowrap;
     font-size: var(--text-xs);
   }
-  .lab-alts-table th:nth-child(1) { width: 26%; }
+  .lab-alts-table th:nth-child(1) { width: 30%; }
   .lab-alts-table th:nth-child(2) { width: 17%; }
   .lab-alts-table th:nth-child(3) { width: 17%; }
-  .lab-alts-table th:nth-child(4) { width: 17%; }
-  .lab-alts-table th:nth-child(5) { width: 23%; }
+  .lab-alts-table th:nth-child(4) { width: 18%; }
+  .lab-alts-table th:nth-child(5) { width: 18%; }
   .lab-view-btn {
     border: 1px solid var(--border);
     background: var(--bg-input);
@@ -1156,8 +1236,8 @@
   }
   .lab-portfolio-layout {
     display: grid;
-    grid-template-columns: 170px minmax(0, 1fr);
-    gap: var(--space-4);
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: var(--space-5);
     align-items: center;
   }
   .lab-pie {
@@ -1170,14 +1250,19 @@
   .lab-pie-legend {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-2) var(--space-4);
+    gap: var(--space-2);
+    align-self: center;
   }
   .lab-pie-item {
     display: grid;
-    grid-template-columns: 10px minmax(0, 1fr) auto;
+    grid-template-columns: 10px minmax(0, 72px) auto;
     gap: var(--space-2);
     align-items: center;
     font-size: var(--text-xs);
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: rgba(255,255,255,0.015);
   }
   .lab-pie-dot {
     width: 10px;
@@ -1187,6 +1272,10 @@
   .lab-pie-item strong,
   .lab-pie-item span:last-child {
     font-family: 'DM Mono', monospace;
+  }
+  .lab-pie-item span:last-child {
+    text-align: right;
+    color: var(--text);
   }
   .lab-corr-cell {
     text-align: center;
@@ -1873,12 +1962,15 @@
         <div class="lab-toolbar">
           <div class="lab-toolbar-group">
             <span class="lab-status">Lookback</span>
-            <select class="lab-control" id="lab-range" onchange="setLabRange(this.value)">
-              <option value="6mo">6M</option>
-              <option value="1y">1Y</option>
-              <option value="2y" selected>2Y</option>
-              <option value="5y">5Y</option>
-            </select>
+            <div class="lab-select-wrap" id="lab-range-wrap">
+              <button class="lab-select-btn" type="button" onclick="toggleLabRangeMenu()" aria-label="Seleccionar lookback"><span id="lab-range-label">2Y</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+              <div class="lab-select-menu" id="lab-range-menu">
+                <button class="lab-select-option" type="button" data-value="6mo" onclick="setLabRange('6mo')">6M</button>
+                <button class="lab-select-option" type="button" data-value="1y" onclick="setLabRange('1y')">1Y</button>
+                <button class="lab-select-option active" type="button" data-value="2y" onclick="setLabRange('2y')">2Y</button>
+                <button class="lab-select-option" type="button" data-value="5y" onclick="setLabRange('5y')">5Y</button>
+              </div>
+            </div>
             <span class="lab-status">Risk-free anual</span>
             <input class="lab-control" id="lab-rf" type="number" min="0" max="100" step="0.1" value="4" onchange="setLabRiskFree(this.value)" title="Risk-free anual (%)" />
             <button class="table-ctrl-btn" onclick="refreshPortfolioLab()" title="Vuelve a descargar series historicas desde Yahoo via Apps Script">Recargar precios</button>
@@ -2136,7 +2228,7 @@ let compChart=null,tipoChart=null,evoChart=null;
 let activeFilter='Todos';
 let activeCurrency='ARS'; // 'ARS' o 'USD' — controla toda la UI de Resumen
 let labMarketData={},labScenario=[],labRange='2y',labRiskFreeRate=0.04,labLoading=false,labDataAttempted=false;
-let labConstraints={maxAsset:0.35,maxSingle:0.25,maxEtf:0.35,maxCrypto:0.10,maxTop3:0.75,minEffective:3,maxHhi:0.35};
+let labConstraints={maxAsset:0.35,maxSingle:0.25,maxEtf:0.35,maxCrypto:0.10,maxTop3:0.75,minEffective:3,maxHhi:0.35,minWeight:0};
 let labSelectedPortfolio='maxSharpeConstrained';
 let labLastAnalytics=null;
 const LAB_SYMBOL_ALIASES={ADGO:'AGRO'};
@@ -3294,6 +3386,7 @@ function labEffectiveAssets(w){const h=labWeightsHhi(w);return h>0?1/h:0;}
 function labTopNWeight(w,n){return w.slice().sort((a,b)=>b-a).slice(0,n).reduce((s,x)=>s+x,0);}
 function labWeightsMeetConstraints(w){
   if(!w||!w.length)return false;
+  if(labConstraints.minWeight>0&&w.some(x=>x>0.0001&&x+1e-6<labConstraints.minWeight))return false;
   if(labTopNWeight(w,3)>labConstraints.maxTop3+1e-6)return false;
   if(labEffectiveAssets(w)+1e-6<labConstraints.minEffective)return false;
   if(labWeightsHhi(w)>labConstraints.maxHhi+1e-6)return false;
@@ -3508,6 +3601,7 @@ function renderLabConstraints(a){
     ['maxEtf','Max ETF','fondos diversificados / wrappers','pct',1],
     ['maxCrypto','Max crypto','BTC/ETH/cripto wrappers','pct',1],
     ['maxTop3','Max Top 3','peso maximo en las tres mayores','pct',1],
+    ['minWeight','Min posicion','evita pesos testimoniales','pct',0.5],
     ['minEffective','Min activos efectivos','1 / HHI minimo requerido','num',0.5],
     ['maxHhi','Max HHI','concentracion maxima permitida','dec',0.01]
   ];
@@ -3606,7 +3700,7 @@ function renderLabPortfolioView(a){
     <div class="lab-portfolio-layout">
       <div>
         <div class="chart-title">${labEsc(name)}</div>
-        <div class="chart-sub">Composicion por pesos historicos simulados</div>
+        <div class="chart-sub">Composicion del portfolio seleccionado segun los pesos historicos simulados</div>
         <div class="lab-pie" style="background:conic-gradient(${stops})"></div>
       </div>
       <div class="lab-pie-legend">
@@ -3646,12 +3740,28 @@ async function loadLabMarketData(){
   labLoading=false;renderPortfolioLab();
 }
 function refreshPortfolioLab(){labMarketData={};labDataAttempted=false;const status=document.getElementById('lab-status');if(status)status.textContent='Recargando precios historicos...';renderPortfolioLab();}
-function setLabRange(v){labRange=v;refreshPortfolioLab();}
+function updateLabRangeUI(){
+  const labels={'6mo':'6M','1y':'1Y','2y':'2Y','5y':'5Y'};
+  const lbl=document.getElementById('lab-range-label');if(lbl)lbl.textContent=labels[labRange]||labRange.toUpperCase();
+  document.querySelectorAll('#lab-range-menu .lab-select-option').forEach(btn=>btn.classList.toggle('active',btn.dataset.value===labRange));
+}
+function toggleLabRangeMenu(){
+  const wrap=document.getElementById('lab-range-wrap');if(!wrap)return;
+  const open=wrap.classList.toggle('open');
+  const btn=wrap.querySelector('.lab-select-btn');if(btn)btn.classList.toggle('active',open);
+}
+function closeLabRangeMenu(){
+  const wrap=document.getElementById('lab-range-wrap');if(!wrap)return;
+  wrap.classList.remove('open');
+  const btn=wrap.querySelector('.lab-select-btn');if(btn)btn.classList.remove('active');
+}
+document.addEventListener('click',e=>{const wrap=document.getElementById('lab-range-wrap');if(wrap&&!wrap.contains(e.target))closeLabRangeMenu();});
+function setLabRange(v){labRange=v;updateLabRangeUI();closeLabRangeMenu();refreshPortfolioLab();}
 function setLabRiskFree(v){labRiskFreeRate=(labParseNumber(v)||0)/100;renderPortfolioLab();}
 function setLabConstraint(key,v){
   if(!(key in labConstraints))return;
   const n=labParseNumber(v)||0;
-  if(['maxAsset','maxSingle','maxEtf','maxCrypto','maxTop3'].includes(key))labConstraints[key]=Math.max(0,Math.min(1,n/100));
+  if(['maxAsset','maxSingle','maxEtf','maxCrypto','maxTop3','minWeight'].includes(key))labConstraints[key]=Math.max(0,Math.min(1,n/100));
   else if(key==='minEffective')labConstraints[key]=Math.max(1,Math.min(Math.max(1,labScenario.length),n));
   else if(key==='maxHhi')labConstraints[key]=Math.max(0.01,Math.min(1,n));
   renderPortfolioLab();
