@@ -1821,6 +1821,8 @@ let compChart=null,tipoChart=null,evoChart=null;
 let activeFilter='Todos';
 let activeCurrency='ARS'; // 'ARS' o 'USD' — controla toda la UI de Resumen
 let labMarketData={},labScenario=[],labRange='2y',labRiskFreeRate=0.04,labLoading=false,labDataAttempted=false;
+const LAB_SYMBOL_ALIASES={ADGO:'AGRO'};
+const LAB_MIN_OBS=80;
 
 const portfolioCols=[
   {key:'Activo',label:'Activo',visible:true},{key:'Tipo',label:'Tipo',visible:true},
@@ -2852,6 +2854,10 @@ function labPct(v,d=1){return isFinite(v)?((v>=0?'+':'')+(v*100).toFixed(d)+'%')
 function labNum(v,d=2){return isFinite(v)?v.toFixed(d):'--';}
 function labRows(){return portfolio.filter(p=>toN(p['Total USD'])>0).sort((a,b)=>toN(b['Total USD'])-toN(a['Total USD']));}
 function labInvestableRows(){return labRows().filter(p=>p['Tipo']!=='Cash'&&p['Ticker']!=='ARS'&&p['Ticker']!=='USD');}
+function labAnalysisSymbol(ticker){
+  const clean=String(ticker||'').toUpperCase().trim().replace(/\.BA$/,'');
+  return LAB_SYMBOL_ALIASES[clean]||clean;
+}
 function buildLabScenario(force=false){
   const rows=labInvestableRows();
   const key=rows.map(p=>p['Ticker']).join('|');
@@ -2859,7 +2865,7 @@ function buildLabScenario(force=false){
   const total=rows.reduce((a,p)=>a+toN(p['Total USD']),0);
   labScenario=rows.map(p=>{
     const currentWeight=total>0?toN(p['Total USD'])/total:0;
-    return {ticker:p['Ticker'],name:p['Nombre']||p['Ticker'],tipo:p['Tipo']||'Otro',totalUSD:toN(p['Total USD']),currentWeight,weight:currentWeight};
+    return {ticker:p['Ticker'],symbol:labAnalysisSymbol(p['Ticker']),name:p['Nombre']||p['Ticker'],tipo:p['Tipo']||'Otro',totalUSD:toN(p['Total USD']),currentWeight,weight:currentWeight};
   });
   labScenario._key=key;
 }
@@ -2890,7 +2896,7 @@ function labMetricCard(label,value,sub,cls=''){
   return `<article class="metric-card"><div class="metric-card-header"><span class="metric-icon">${labEsc(label.slice(0,2).toUpperCase())}</span><span class="metric-label">${labEsc(label)}</span></div><div class="metric-body"><div class="metric-value ${cls}">${labEsc(value)}</div><div class="metric-sub">${labEsc(sub)}</div></div></article>`;
 }
 function labScenarioStats(useCurrentWeights){
-  const usable=labScenario.filter(s=>{const h=labMarketData[s.ticker];return h&&Array.isArray(h.data)&&h.data.length>40;});
+  const usable=labScenario.filter(s=>{const h=labMarketData[s.ticker];return h&&Array.isArray(h.data)&&h.data.length>=LAB_MIN_OBS;});
   if(!usable.length)return null;
   const maps=usable.map(s=>{const map={};labMarketData[s.ticker].data.forEach(r=>{const px=toN(r.adjClose||r.close);if(r.fecha&&px>0)map[r.fecha]=px;});return {row:s,map};});
   let dates=Object.keys(maps[0].map).sort();
@@ -2922,7 +2928,7 @@ function labDDFromReturns(returns){
   return {mdd,series};
 }
 function labAnalytics(){
-  const usable=labScenario.filter(s=>{const h=labMarketData[s.ticker];return h&&Array.isArray(h.data)&&h.data.length>40;});
+  const usable=labScenario.filter(s=>{const h=labMarketData[s.ticker];return h&&Array.isArray(h.data)&&h.data.length>=LAB_MIN_OBS;});
   if(usable.length<2)return null;
   const maps=usable.map(s=>{
     const map={};
@@ -2971,6 +2977,14 @@ function labAnalytics(){
   }));
   return {assets:maps.map(m=>m.asset),dates:usedDates,rets,mu,covM,current,sim,equal,minVol,maxSharpe,points,currentDD,simDD,riskContrib,corr};
 }
+function labAnalyticsIssue(){
+  const loaded=labScenario.map(s=>({ticker:s.ticker,symbol:s.symbol,data:labMarketData[s.ticker]&&labMarketData[s.ticker].data||[]}));
+  const usable=loaded.filter(x=>x.data.length>=LAB_MIN_OBS);
+  if(!loaded.length)return 'No hay activos invertibles para analizar.';
+  if(!Object.keys(labMarketData).length)return 'Todavia no hay historicos cargados.';
+  if(usable.length<2)return 'Hay menos de 2 activos con series suficientes. Revisa los simbolos de datos historicos.';
+  return 'Las series cargadas no tienen suficientes fechas comunes para alinear retornos.';
+}
 function labSetCanvasSize(canvas){
   const dpr=window.devicePixelRatio||1;
   const rect=canvas.getBoundingClientRect();
@@ -2983,7 +2997,7 @@ function labSetCanvasSize(canvas){
 function drawLabScatter(analytics){
   const c=document.getElementById('lab-frontier');if(!c)return;
   const {ctx,W,H}=labSetCanvasSize(c);ctx.clearRect(0,0,W,H);ctx.fillStyle='rgba(0,0,0,0.10)';ctx.fillRect(0,0,W,H);
-  if(!analytics){ctx.fillStyle='#888';ctx.font='14px sans-serif';ctx.fillText('Esperando historicos alineados',24,32);return;}
+  if(!analytics){ctx.fillStyle='#888';ctx.font='14px sans-serif';ctx.fillText(labAnalyticsIssue(),24,32);return;}
   const special=[{...analytics.current,label:'Actual',color:'#fbbf24'},{...analytics.sim,label:'Sim',color:'#60a5fa'},{...analytics.minVol,label:'Min Vol',color:'#4ade80'},{...analytics.maxSharpe,label:'Max Sharpe',color:'#a78bfa'}];
   const xs=analytics.points.map(p=>p.vol).concat(special.map(p=>p.vol)),ys=analytics.points.map(p=>p.ret).concat(special.map(p=>p.ret));
   let xmin=Math.min(...xs)*0.9,xmax=Math.max(...xs)*1.1,ymin=Math.min(...ys)*1.1,ymax=Math.max(...ys)*1.1;if(ymin>0)ymin=0;
@@ -2997,7 +3011,7 @@ function drawLabScatter(analytics){
 function drawLabDrawdown(analytics){
   const c=document.getElementById('lab-drawdown');if(!c)return;
   const {ctx,W,H}=labSetCanvasSize(c);ctx.clearRect(0,0,W,H);ctx.fillStyle='rgba(0,0,0,0.10)';ctx.fillRect(0,0,W,H);
-  if(!analytics){ctx.fillStyle='#888';ctx.font='14px sans-serif';ctx.fillText('Esperando historicos alineados',24,32);return;}
+  if(!analytics){ctx.fillStyle='#888';ctx.font='14px sans-serif';ctx.fillText(labAnalyticsIssue(),24,32);return;}
   const series=[{label:'Actual',data:analytics.currentDD.series,color:'#f87171'},{label:'Simulado',data:analytics.simDD.series,color:'#60a5fa'}];
   const ymin=Math.min(...series.flatMap(s=>s.data),-0.01),ymax=0;
   const X=(i,n)=>52+i/Math.max(1,n-1)*(W-78),Y=y=>H-44-(y-ymin)/(ymax-ymin)*(H-72);
@@ -3062,7 +3076,7 @@ function renderLabRiskContrib(a){
 }
 function renderLabCorr(a){
   const el=document.getElementById('lab-corr-table');if(!el)return;
-  if(!a){el.innerHTML='<tr><td class="cell-muted" style="padding:24px;text-align:center">Esperando historicos alineados.</td></tr>';return;}
+  if(!a){el.innerHTML=`<tr><td class="cell-muted" style="padding:24px;text-align:center">${labEsc(labAnalyticsIssue())}</td></tr>`;return;}
   let html='<thead><tr><th></th>'+a.assets.map(x=>`<th>${labEsc(x.ticker)}</th>`).join('')+'</tr></thead><tbody>';
   for(let i=0;i<a.assets.length;i++){
     html+=`<tr><td><strong>${labEsc(a.assets[i].ticker)}</strong></td>`;
@@ -3077,7 +3091,7 @@ function renderLabCorr(a){
 }
 function renderLabAlts(a){
   const el=document.getElementById('lab-alts-table');if(!el)return;
-  if(!a){el.innerHTML='<tr><td class="cell-muted" style="padding:24px;text-align:center">Esperando historicos alineados.</td></tr>';return;}
+  if(!a){el.innerHTML=`<tr><td class="cell-muted" style="padding:24px;text-align:center">${labEsc(labAnalyticsIssue())}</td></tr>`;return;}
   const rows=[
     ['Actual',a.current],
     ['Simulado',a.sim],
@@ -3098,7 +3112,11 @@ function renderLabCompare(a){
     const cVol=current.vol??current.annVol,sVol=sim.vol??sim.annVol,sRet=sim.ret??sim.annReturn;
     el.innerHTML=[`Sharpe actual ${labNum(current.sharpe,2)}`,`Sharpe sim ${labNum(sim.sharpe,2)}`,`Vol actual ${labPct(cVol,1)}`,`Vol sim ${labPct(sVol,1)}`,`Ret sim ${labPct(sRet,1)}`].map(t=>`<span class="lab-pill">${labEsc(t)}</span>`).join('');
   } else if(el) el.innerHTML='<span class="lab-pill">Esperando historicos por ticker</span>';
-  if(dataEl)dataEl.innerHTML=labScenario.slice(0,10).map(s=>{const h=labMarketData[s.ticker],count=h&&h.data?h.data.length:0,sym=h&&h.symbol&&h.symbol!==s.ticker?' '+h.symbol:'';return `<span class="lab-pill">${labEsc(s.ticker)}${labEsc(sym)} ${count?count+' obs':'sin datos'}</span>`;}).join('')||'<span class="lab-pill">Sin activos</span>';
+  if(dataEl)dataEl.innerHTML=labScenario.slice(0,10).map(s=>{
+    const h=labMarketData[s.ticker],count=h&&h.data?h.data.length:0,used=h&&h.symbol?h.symbol:s.symbol;
+    const status=count>=LAB_MIN_OBS?`${count} obs`:(count?`${count} obs · excluido`:'sin datos');
+    return `<span class="lab-pill">${labEsc(s.ticker)} -> ${labEsc(used)} ${labEsc(status)}</span>`;
+  }).join('')||'<span class="lab-pill">Sin activos</span>';
 }
 function renderPortfolioLab(){
   if(!document.getElementById('sec-lab'))return;
@@ -3112,7 +3130,12 @@ async function loadLabMarketData(){
   labDataAttempted=true;
   labLoading=true;const status=document.getElementById('lab-status');if(status)status.textContent='Cargando historicos...';
   try{
-    const settled=await Promise.allSettled(rows.map(p=>fetch(API_URL+'?sheet=MarketData&ticker='+encodeURIComponent(p['Ticker'])+'&range='+encodeURIComponent(labRange)).then(r=>r.json())));
+    const settled=await Promise.allSettled(rows.map(p=>{
+      const ticker=p['Ticker'];
+      const symbol=labAnalysisSymbol(ticker);
+      const url=API_URL+'?sheet=MarketData&ticker='+encodeURIComponent(ticker)+'&symbol='+encodeURIComponent(symbol)+'&range='+encodeURIComponent(labRange)+'&_='+Date.now();
+      return fetch(url).then(r=>r.json());
+    }));
     settled.forEach((res,i)=>{const ticker=rows[i]['Ticker'];if(res.status==='fulfilled'&&!res.value.error)labMarketData[ticker]=res.value;});
     if(status)status.textContent='Historicos cargados';
   }catch(e){if(status)status.textContent='MarketData no disponible';}
