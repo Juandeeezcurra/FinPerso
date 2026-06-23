@@ -1656,21 +1656,42 @@ function _getMarketData(params) {
   if (!symbol) throw new Error("Falta ticker o symbol");
   var range = _normalizeYahooRange(params.range || "2y");
   var interval = _normalizeYahooInterval(params.interval || "1d");
-  var data = _getYahooHistory(symbol, range, interval);
-  if (data.length === 0 && ticker && symbol === ticker && symbol.indexOf(".") === -1 && symbol.charAt(0) !== "^") {
-    var baSymbol = ticker + ".BA";
-    var baData = _getYahooHistory(baSymbol, range, interval);
-    if (baData.length > 0) {
-      symbol = baSymbol;
-      data = baData;
+
+  var candidates = [];
+  function addCandidate(s) {
+    if (!s) return;
+    s = String(s).trim();
+    if (s && candidates.indexOf(s) === -1) candidates.push(s);
+  }
+  addCandidate(symbol);
+  if (ticker && ticker.indexOf(".") === -1 && ticker.charAt(0) !== "^") addCandidate(ticker);
+  if (/\.BA$/i.test(symbol)) addCandidate(symbol.replace(/\.BA$/i, ""));
+  if (ticker && ticker.indexOf(".") === -1 && ticker.charAt(0) !== "^") addCandidate(ticker + ".BA");
+
+  var minObs = 40;
+  var bestSymbol = symbol;
+  var bestData = [];
+  for (var i = 0; i < candidates.length; i++) {
+    var candidate = candidates[i];
+    var candidateData = _getYahooHistory(candidate, range, interval);
+    if (candidateData.length > bestData.length) {
+      bestSymbol = candidate;
+      bestData = candidateData;
+    }
+    if (candidateData.length >= minObs) {
+      bestSymbol = candidate;
+      bestData = candidateData;
+      break;
     }
   }
+
   return {
-    ticker: ticker || symbol,
-    symbol: symbol,
+    ticker: ticker || bestSymbol,
+    symbol: bestSymbol,
+    requestedSymbol: symbol,
     range: range,
     interval: interval,
-    data: data
+    data: bestData
   };
 }
 

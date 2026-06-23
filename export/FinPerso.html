@@ -3098,7 +3098,7 @@ function renderLabCompare(a){
     const cVol=current.vol??current.annVol,sVol=sim.vol??sim.annVol,sRet=sim.ret??sim.annReturn;
     el.innerHTML=[`Sharpe actual ${labNum(current.sharpe,2)}`,`Sharpe sim ${labNum(sim.sharpe,2)}`,`Vol actual ${labPct(cVol,1)}`,`Vol sim ${labPct(sVol,1)}`,`Ret sim ${labPct(sRet,1)}`].map(t=>`<span class="lab-pill">${labEsc(t)}</span>`).join('');
   } else if(el) el.innerHTML='<span class="lab-pill">Esperando historicos por ticker</span>';
-  if(dataEl)dataEl.innerHTML=labScenario.slice(0,10).map(s=>{const h=labMarketData[s.ticker],count=h&&h.data?h.data.length:0;return `<span class="lab-pill">${labEsc(s.ticker)} ${count?count+' obs':'sin datos'}</span>`;}).join('')||'<span class="lab-pill">Sin activos</span>';
+  if(dataEl)dataEl.innerHTML=labScenario.slice(0,10).map(s=>{const h=labMarketData[s.ticker],count=h&&h.data?h.data.length:0,sym=h&&h.symbol&&h.symbol!==s.ticker?' '+h.symbol:'';return `<span class="lab-pill">${labEsc(s.ticker)}${labEsc(sym)} ${count?count+' obs':'sin datos'}</span>`;}).join('')||'<span class="lab-pill">Sin activos</span>';
 }
 function renderPortfolioLab(){
   if(!document.getElementById('sec-lab'))return;
