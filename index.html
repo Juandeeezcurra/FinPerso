@@ -3515,7 +3515,9 @@ function drawLabScatter(analytics){
   const yRet=p=>isFinite(p.cagr)?p.cagr:p.ret;
   const special=[{...analytics.current,label:'Actual',color:'#fbbf24'},{...analytics.sim,label:'Sim',color:'#60a5fa'},{...analytics.minVol,label:'Min Vol restr.',color:'#4ade80'},{...analytics.maxSharpeConstrained,label:'Sharpe restr.',color:'#a78bfa'}].filter(p=>p&&isFinite(p.vol)&&isFinite(yRet(p)));
   const xs=analytics.points.map(p=>p.vol).concat(special.map(p=>p.vol)),ys=analytics.points.map(yRet).concat(special.map(yRet));
-  let xmin=Math.min(Math.min(...xs)*0.9,0),xmax=Math.max(Math.max(...xs)*1.1,0.35),ymin=Math.min(...ys)*1.1,ymax=Math.max(...ys)*1.1;if(ymin>0)ymin=0;
+  const xMinRaw=Math.min(...xs),xMaxRaw=Math.max(...xs),xPad=Math.max(0.015,(xMaxRaw-xMinRaw)*0.22);
+  let xmin=Math.max(0,xMinRaw-xPad),xmax=xMaxRaw+xPad,ymin=Math.min(...ys)*1.1,ymax=Math.max(...ys)*1.1;if(ymin>0)ymin=0;
+  if(xmax-xmin<0.08){const mid=(xmax+xmin)/2;xmin=Math.max(0,mid-0.04);xmax=mid+0.04;}
   const X=x=>58+(x-xmin)/(xmax-xmin)*(W-92),Y=y=>H-46-(y-ymin)/(ymax-ymin)*(H-76);
   const riskBands=[
     {from:0,to:0.08,label:'Conservador',color:'rgba(34,197,94,0.035)'},
@@ -3543,16 +3545,6 @@ function drawLabScatter(analytics){
     ctx.beginPath();ctx.moveTo(x,24);ctx.lineTo(x,H-46);ctx.stroke();ctx.textAlign='center';ctx.fillText(labPct(xVal,0),x,H-28);ctx.textAlign='right';
   }
   ctx.fillStyle='rgba(96,165,250,0.22)';analytics.points.forEach(p=>{ctx.beginPath();ctx.arc(X(p.vol),Y(yRet(p)),2,0,Math.PI*2);ctx.fill();});
-  const current=special.find(p=>p.label==='Actual'),target=special.find(p=>p.label==='Sharpe restr.');
-  if(current&&target){
-    const x1=X(current.vol),y1=Y(yRet(current)),x2=X(target.vol),y2=Y(yRet(target));
-    ctx.save();ctx.strokeStyle='rgba(167,139,250,0.70)';ctx.lineWidth=2;ctx.setLineDash([6,5]);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.restore();
-    const sh1=current.realizedSharpe??current.sharpe,sh2=target.realizedSharpe??target.sharpe;
-    ctx.fillStyle='rgba(15,15,22,0.86)';ctx.strokeStyle='rgba(167,139,250,0.42)';ctx.lineWidth=1;
-    const bx=Math.min(Math.max((x1+x2)/2-58,62),W-168),by=Math.min(Math.max((y1+y2)/2-18,32),H-86);
-    ctx.beginPath();ctx.roundRect(bx,by,116,34,8);ctx.fill();ctx.stroke();
-    ctx.fillStyle='#e5e7eb';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('Sharpe '+labNum(sh1,2)+' -> '+labNum(sh2,2),bx+58,by+21);
-  }
   special.forEach(p=>{const primary=p.label==='Actual'||p.label==='Sharpe restr.',r=primary?9:6;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(X(p.vol),Y(yRet(p)),r,0,Math.PI*2);ctx.fill();if(primary){ctx.strokeStyle='rgba(255,255,255,0.72)';ctx.lineWidth=2;ctx.stroke();}ctx.fillStyle='#e5e7eb';ctx.font=primary?'14px sans-serif':'12px sans-serif';ctx.textAlign='left';ctx.fillText(p.label,X(p.vol)+12,Y(yRet(p))-9);});
   ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('Volatilidad anual',W/2,H-8);ctx.save();ctx.translate(16,H/2+50);ctx.rotate(-Math.PI/2);ctx.fillText('CAGR historico anual',0,0);ctx.restore();ctx.textAlign='left';
 }
