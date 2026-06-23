@@ -3515,8 +3515,25 @@ function drawLabScatter(analytics){
   const yRet=p=>isFinite(p.cagr)?p.cagr:p.ret;
   const special=[{...analytics.current,label:'Actual',color:'#fbbf24'},{...analytics.sim,label:'Sim',color:'#60a5fa'},{...analytics.minVol,label:'Min Vol restr.',color:'#4ade80'},{...analytics.maxSharpeConstrained,label:'Sharpe restr.',color:'#a78bfa'}].filter(p=>p&&isFinite(p.vol)&&isFinite(yRet(p)));
   const xs=analytics.points.map(p=>p.vol).concat(special.map(p=>p.vol)),ys=analytics.points.map(yRet).concat(special.map(yRet));
-  let xmin=Math.min(...xs)*0.9,xmax=Math.max(...xs)*1.1,ymin=Math.min(...ys)*1.1,ymax=Math.max(...ys)*1.1;if(ymin>0)ymin=0;
+  let xmin=Math.min(Math.min(...xs)*0.9,0),xmax=Math.max(Math.max(...xs)*1.1,0.35),ymin=Math.min(...ys)*1.1,ymax=Math.max(...ys)*1.1;if(ymin>0)ymin=0;
   const X=x=>58+(x-xmin)/(xmax-xmin)*(W-92),Y=y=>H-46-(y-ymin)/(ymax-ymin)*(H-76);
+  const riskBands=[
+    {from:0,to:0.08,label:'Conservador',color:'rgba(34,197,94,0.055)'},
+    {from:0.08,to:0.15,label:'Moderado',color:'rgba(96,165,250,0.055)'},
+    {from:0.15,to:0.22,label:'Agresivo razonable',color:'rgba(167,139,250,0.060)'},
+    {from:0.22,to:0.28,label:'Muy agresivo',color:'rgba(251,191,36,0.060)'},
+    {from:0.28,to:0.35,label:'Demasiado alto',color:'rgba(248,113,113,0.070)'}
+  ];
+  riskBands.forEach(b=>{
+    const left=Math.max(X(Math.max(b.from,xmin)),58),right=Math.min(X(Math.min(b.to,xmax)),W-34);
+    if(right<=left)return;
+    ctx.fillStyle=b.color;ctx.fillRect(left,24,right-left,H-70);
+    if(right-left>70){
+      ctx.save();ctx.translate((left+right)/2,38);ctx.rotate(-Math.PI/2);
+      ctx.fillStyle='rgba(148,163,184,0.55)';ctx.font='10px sans-serif';ctx.textAlign='right';
+      ctx.fillText(b.label,0,0);ctx.restore();
+    }
+  });
   ctx.strokeStyle='rgba(148,163,184,0.18)';ctx.lineWidth=1;
   ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.textAlign='right';
   for(let i=0;i<5;i++){
