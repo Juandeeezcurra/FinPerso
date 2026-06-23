@@ -21,3 +21,4 @@ Revisiones tecnicas historicas y reportes de fixes:
 Notas puntuales de bugs o investigaciones:
 
 - `fix-variacion-diaria.md`: analisis del bug de variacion diaria y propuesta de correccion en Apps Script.
+- `portfolio-lab-plan.md`: plan de producto y arquitectura para la nueva seccion Portfolio Lab.

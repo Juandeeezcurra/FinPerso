@@ -62,7 +62,7 @@ var CONFIG = {
 //  El frontend debe enviar ?token=<valor> (GET) o payload.token (POST)
 // ============================================================
 
-var ALLOWED_SHEETS  = ["Portfolio", "Operaciones", "Efectivo", "Historial", "Benchmark", "Valores"];
+var ALLOWED_SHEETS  = ["Portfolio", "Operaciones", "Efectivo", "Historial", "Benchmark", "MarketData", "Valores"];
 var ORDENES_VALIDAS = ["Compra", "Venta"];
 var MONEDAS_VALIDAS = ["ARS", "USD"];
 var TIPOS_VALIDOS   = ["Equity", "Bonos", "Crypto", "Cash", "Agro"];
@@ -396,13 +396,41 @@ function _getMEPHistorico(fecha) {
 // ============================================================
 
 function _getPrecioYahoo(symbol) {
-  var url = "https://query1.finance.yahoo.com/v8/finance/chart/" + symbol + "?interval=1d&range=5d";
-  var res = UrlFetchApp.fetch(url, {
-    muteHttpExceptions: true,
-    headers: { "User-Agent": "Mozilla/5.0 (compatible; Google-Apps-Script)" }
-  });
-  var data = JSON.parse(res.getContentText());
-  var result = data && data.chart && data.chart.result && data.chart.result[0];
+  function _fetchYahooChart(range) {
+    var url = "https://query1.finance.yahoo.com/v8/finance/chart/" + symbol + "?interval=1d&range=" + range;
+    var res = UrlFetchApp.fetch(url, {
+      muteHttpExceptions: true,
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; Google-Apps-Script)" }
+    });
+    var data = JSON.parse(res.getContentText());
+    return data && data.chart && data.chart.result && data.chart.result[0];
+  }
+
+  function _getDatedCloses(result, fechaFn) {
+    var timestamps = result.timestamp || [];
+    var closes = (result.indicators && result.indicators.quote && result.indicators.quote[0] && result.indicators.quote[0].close) || [];
+    var out = [];
+    for (var i = 0; i < closes.length; i++) {
+      if (closes[i] !== null && closes[i] !== undefined && timestamps[i]) {
+        out.push({
+          fecha: fechaFn(timestamps[i]),
+          close: closes[i]
+        });
+      }
+    }
+    return out;
+  }
+
+  function _previousCloseFromDatedCloses(datedCloses, hoy) {
+    if (datedCloses.length === 0) return null;
+    var last = datedCloses[datedCloses.length - 1];
+    if (last.fecha === hoy) {
+      return datedCloses.length >= 2 ? datedCloses[datedCloses.length - 2].close : null;
+    }
+    return last.close;
+  }
+
+  var result = _fetchYahooChart("5d");
   if (!result || !result.meta) return null;
   var meta = result.meta;
   var precio = meta.regularMarketPrice || meta.previousClose || null;
@@ -410,42 +438,49 @@ function _getPrecioYahoo(symbol) {
   // meta.chartPreviousClose NO sirve para esto con range=5d: es el cierre
   // anterior al rango del chart, que puede quedar varios dias atras.
   var yahooPrevClose = meta.previousClose || null;
-
-  // Detectar si precio es de hoy ARG con múltiples señales (algunos símbolos
-  // como META.BA no devuelven regularMarketTime). Orden de confianza:
-  //   1) meta.regularMarketTime → fecha exacta del último trade
-  //   2) último timestamp del chart → fecha de la última vela
-  //   3) si ninguno, comparar precio vs último cierre del chart:
-  //      - precio ≠ lastClose → meta es más fresca que chart → asumir hoy
-  //      - precio ≈ lastClose → no podemos saber; conservador: asumir NO hoy
   var hoyARG = Utilities.formatDate(new Date(), "America/Argentina/Buenos_Aires", "yyyy-MM-dd");
   function _fechaARG(epochSec) {
     return Utilities.formatDate(new Date(epochSec * 1000), "America/Argentina/Buenos_Aires", "yyyy-MM-dd");
   }
 
-  var timestamps = result.timestamp || [];
-  var closes = (result.indicators && result.indicators.quote && result.indicators.quote[0] && result.indicators.quote[0].close) || [];
-  var validCloses = [];
-  var datedCloses = [];
-  for (var i = 0; i < closes.length; i++) {
-    if (closes[i] !== null && closes[i] !== undefined) {
-      validCloses.push(closes[i]);
-      if (timestamps[i]) {
-        datedCloses.push({
-          fecha: _fechaARG(timestamps[i]),
-          close: closes[i]
-        });
-      }
+  var datedCloses = _getDatedCloses(result, _fechaARG);
+  if (datedCloses.length < 2) {
+    try {
+      var result1m = _fetchYahooChart("1mo");
+      if (result1m) datedCloses = _getDatedCloses(result1m, _fechaARG);
+    } catch(e) {
+      Logger.log("Fallback 1mo sin datos para " + symbol + ": " + e.message);
     }
   }
 
+  var timestamps = result.timestamp || [];
+  var closes = (result.indicators && result.indicators.quote && result.indicators.quote[0] && result.indicators.quote[0].close) || [];
+  var validCloses = [];
+  for (var i = 0; i < closes.length; i++) {
+    if (closes[i] !== null && closes[i] !== undefined) validCloses.push(closes[i]);
+  }
+
+  if (validCloses.length === 0 && datedCloses.length > 0) {
+    for (var j = 0; j < datedCloses.length; j++) validCloses.push(datedCloses[j].close);
+  }
+
   function _previousCloseFromChart() {
-    if (datedCloses.length === 0) return null;
-    var last = datedCloses[datedCloses.length - 1];
-    if (last.fecha === hoyARG) {
-      return datedCloses.length >= 2 ? datedCloses[datedCloses.length - 2].close : null;
+    return _previousCloseFromDatedCloses(datedCloses, hoyARG);
+  }
+
+  function _previousCloseFromOneDayMeta() {
+    try {
+      var result1d = _fetchYahooChart("1d");
+      if (result1d && result1d.meta) {
+        // En range=1d, chartPreviousClose apunta al cierre anterior a la rueda
+        // actual. Evitamos usar chartPreviousClose del range=5d porque ahi
+        // puede apuntar al cierre anterior a todo el rango.
+        return result1d.meta.previousClose || result1d.meta.chartPreviousClose || null;
+      }
+    } catch(e) {
+      Logger.log("Fallback 1d sin previousClose para " + symbol + ": " + e.message);
     }
-    return last.close;
+    return null;
   }
 
   // Detección de precioEsDeHoy: cualquier señal positiva basta.
@@ -478,6 +513,7 @@ function _getPrecioYahoo(symbol) {
   // Esto cubre simbolos como META.BA/S29Y6.BA, que pueden traer precio actual
   // sin meta.previousClose ni regularMarketTime.
   var previousClose = yahooPrevClose || _previousCloseFromChart();
+  if (!previousClose) previousClose = _previousCloseFromOneDayMeta();
   if (!previousClose && validCloses.length >= 1 && precio) {
     var lastClose = validCloses[validCloses.length - 1];
     var epsilon = Math.max(0.01, Math.abs(lastClose) * 0.0005);
@@ -1557,6 +1593,87 @@ function _getBenchmarkData(symbol) {
   return out;
 }
 
+function _normalizeYahooRange(range) {
+  var r = String(range || "6mo").toLowerCase();
+  return /^(1mo|3mo|6mo|1y|2y|5y|10y)$/.test(r) ? r : "6mo";
+}
+
+function _normalizeYahooInterval(interval) {
+  var i = String(interval || "1d").toLowerCase();
+  return /^(1d|1wk|1mo)$/.test(i) ? i : "1d";
+}
+
+function _getYahooHistory(symbol, range, interval) {
+  if (!symbol) throw new Error("Falta symbol");
+  range = _normalizeYahooRange(range);
+  interval = _normalizeYahooInterval(interval);
+
+  var cacheKey = "yh_hist_" + symbol + "_" + range + "_" + interval;
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get(cacheKey);
+  if (cached) return JSON.parse(cached);
+
+  var url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(symbol)
+          + "?range=" + encodeURIComponent(range)
+          + "&interval=" + encodeURIComponent(interval)
+          + "&events=history";
+  var res = UrlFetchApp.fetch(url, {
+    muteHttpExceptions: true,
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; Google-Apps-Script)" }
+  });
+  var data = JSON.parse(res.getContentText());
+  var result = data && data.chart && data.chart.result && data.chart.result[0];
+  if (!result || !result.timestamp) return [];
+
+  var timestamps = result.timestamp;
+  var closes = (result.indicators && result.indicators.quote &&
+                result.indicators.quote[0] && result.indicators.quote[0].close) || [];
+  var adjCloses = (result.indicators && result.indicators.adjclose &&
+                   result.indicators.adjclose[0] && result.indicators.adjclose[0].adjclose) || [];
+  if (closes.length === 0) return [];
+  var out = [];
+  for (var i = 0; i < timestamps.length; i++) {
+    if (closes[i] === null || closes[i] === undefined) continue;
+    var d = new Date(timestamps[i] * 1000);
+    var fecha = Utilities.formatDate(d, "America/Argentina/Buenos_Aires", "yyyy-MM-dd");
+    out.push({
+      fecha: fecha,
+      close: closes[i],
+      adjClose: adjCloses[i] !== null && adjCloses[i] !== undefined ? adjCloses[i] : closes[i]
+    });
+  }
+  cache.put(cacheKey, JSON.stringify(out), 60 * 60);
+  return out;
+}
+
+function _getMarketData(params) {
+  var ticker = params.ticker ? String(params.ticker).toUpperCase().trim() : "";
+  var symbol = params.symbol ? String(params.symbol).trim() : "";
+  if (!symbol && ticker) {
+    var tkData = _getTickers();
+    symbol = tkData.map[ticker] || ticker;
+  }
+  if (!symbol) throw new Error("Falta ticker o symbol");
+  var range = _normalizeYahooRange(params.range || "2y");
+  var interval = _normalizeYahooInterval(params.interval || "1d");
+  var data = _getYahooHistory(symbol, range, interval);
+  if (data.length === 0 && ticker && symbol === ticker && symbol.indexOf(".") === -1 && symbol.charAt(0) !== "^") {
+    var baSymbol = ticker + ".BA";
+    var baData = _getYahooHistory(baSymbol, range, interval);
+    if (baData.length > 0) {
+      symbol = baSymbol;
+      data = baData;
+    }
+  }
+  return {
+    ticker: ticker || symbol,
+    symbol: symbol,
+    range: range,
+    interval: interval,
+    data: data
+  };
+}
+
 function doGet(e) {
   var API_TOKEN = PropertiesService.getScriptProperties().getProperty("API_TOKEN");
   if (API_TOKEN && e.parameter.token !== API_TOKEN) {
@@ -1582,6 +1699,16 @@ function doGet(e) {
     try {
       var benchData = _getBenchmarkData(symbol);
       return ContentService.createTextOutput(JSON.stringify(benchData))
+        .setMimeType(ContentService.MimeType.JSON);
+    } catch(err) {
+      return ContentService.createTextOutput(JSON.stringify({ error: err.message }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
+  if (sheet === "MarketData") {
+    try {
+      return ContentService.createTextOutput(JSON.stringify(_getMarketData(e.parameter)))
         .setMimeType(ContentService.MimeType.JSON);
     } catch(err) {
       return ContentService.createTextOutput(JSON.stringify({ error: err.message }))
