@@ -1236,12 +1236,18 @@
   }
   .lab-portfolio-layout {
     display: grid;
-    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-columns: 190px minmax(0, 1fr);
     gap: var(--space-5);
     align-items: center;
   }
+  .lab-pie-panel {
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    min-height: 170px;
+  }
   .lab-pie {
-    width: 148px;
+    width: 154px;
     aspect-ratio: 1;
     border-radius: var(--radius-full);
     border: 1px solid var(--border-strong);
@@ -2228,7 +2234,7 @@ let compChart=null,tipoChart=null,evoChart=null;
 let activeFilter='Todos';
 let activeCurrency='ARS'; // 'ARS' o 'USD' — controla toda la UI de Resumen
 let labMarketData={},labScenario=[],labRange='2y',labRiskFreeRate=0.04,labLoading=false,labDataAttempted=false;
-let labConstraints={maxAsset:0.35,maxSingle:0.25,maxEtf:0.35,maxCrypto:0.10,maxTop3:0.75,minEffective:3,maxHhi:0.35,minWeight:0};
+let labConstraints={maxAsset:0.35,maxSingle:0.25,maxEtf:0.35,maxCrypto:0.10,maxTop3:0.75,maxHhi:0.35,minSingle:0};
 let labSelectedPortfolio='maxSharpeConstrained';
 let labLastAnalytics=null;
 const LAB_SYMBOL_ALIASES={ADGO:'AGRO'};
@@ -3363,7 +3369,7 @@ function labShuffle(arr){
   for(let i=out.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[out[i],out[j]]=[out[j],out[i]];}
   return out;
 }
-function labRandomWeightsCapped(caps){
+function labRandomWeightsCapped(caps,assets){
   if(!caps.length||caps.reduce((a,b)=>a+b,0)<1-1e-9)return null;
   const n=caps.length,idx=Array.from({length:n},(_,i)=>i);
   for(let attempt=0;attempt<250;attempt++){
@@ -3377,18 +3383,17 @@ function labRandomWeightsCapped(caps){
       const val=k===n-1?remaining:minThis+(maxThis-minThis)*Math.random();
       w[i]=Math.max(0,Math.min(caps[i],val));remaining-=w[i];
     }
-    if(!failed&&Math.abs(remaining)<1e-6&&w.every((v,i)=>v<=caps[i]+1e-6)&&labWeightsMeetConstraints(w))return w;
+    if(!failed&&Math.abs(remaining)<1e-6&&w.every((v,i)=>v<=caps[i]+1e-6)&&labWeightsMeetConstraints(w,assets))return w;
   }
   return null;
 }
 function labWeightsHhi(w){return w.reduce((s,x)=>s+x*x,0);}
 function labEffectiveAssets(w){const h=labWeightsHhi(w);return h>0?1/h:0;}
 function labTopNWeight(w,n){return w.slice().sort((a,b)=>b-a).slice(0,n).reduce((s,x)=>s+x,0);}
-function labWeightsMeetConstraints(w){
+function labWeightsMeetConstraints(w,assets){
   if(!w||!w.length)return false;
-  if(labConstraints.minWeight>0&&w.some(x=>x>0.0001&&x+1e-6<labConstraints.minWeight))return false;
+  if(labConstraints.minSingle>0&&assets&&w.some((x,i)=>x>0.0001&&labAssetKind(assets[i])==='single'&&x+1e-6<labConstraints.minSingle))return false;
   if(labTopNWeight(w,3)>labConstraints.maxTop3+1e-6)return false;
-  if(labEffectiveAssets(w)+1e-6<labConstraints.minEffective)return false;
   if(labWeightsHhi(w)>labConstraints.maxHhi+1e-6)return false;
   return true;
 }
@@ -3450,10 +3455,11 @@ function labAnalytics(){
   let sim=labPortStats(simW,mu,covM);
   let equal=labPortStats(Array(n).fill(1/n),mu,covM);
   let minVol={vol:Infinity},maxSharpeConstrained={sharpe:-Infinity,realizedSharpe:-Infinity},points=[];
-  const caps=labCaps(maps.map(m=>m.asset));
+  const assets=maps.map(m=>m.asset);
+  const caps=labCaps(assets);
   const score=s=>isFinite(s.realizedSharpe)?s.realizedSharpe:s.sharpe;
   for(let i=0;i<6500;i++){
-    const w=labRandomWeightsCapped(caps);
+    const w=labRandomWeightsCapped(caps,assets);
     if(w){
       const s=addRealized(labPortStats(w,mu,covM));
       points.push(s);
@@ -3483,7 +3489,7 @@ function labAnalytics(){
     const denom=labStd(rets[i])*labStd(rets[j]);
     return denom>0?labCov(rets[i],rets[j])/denom:0;
   }));
-  return {assets:maps.map(m=>m.asset),dates:usedDates,rets,mu,covM,current,sim,equal,minVol,maxSharpe,maxSharpeConstrained,points,caps,currentDD,simDD,riskContrib,corr};
+  return {assets,dates:usedDates,rets,mu,covM,current,sim,equal,minVol,maxSharpe,maxSharpeConstrained,points,caps,currentDD,simDD,riskContrib,corr};
 }
 function labAnalyticsIssue(){
   const loaded=labScenario.map(s=>({ticker:s.ticker,symbol:s.symbol,data:labMarketData[s.ticker]&&labMarketData[s.ticker].data||[]}));
@@ -3596,13 +3602,12 @@ function renderLabRiskContrib(a){
 function renderLabConstraints(a){
   const el=document.getElementById('lab-constraints');if(!el)return;
   const rows=[
-    ['maxAsset','Max por activo','limite general de concentracion','pct',1],
+    ['maxAsset','Max tipo de activo','limite general por clase','pct',1],
     ['maxSingle','Max accion individual','single-name equity','pct',1],
     ['maxEtf','Max ETF','fondos diversificados / wrappers','pct',1],
     ['maxCrypto','Max crypto','BTC/ETH/cripto wrappers','pct',1],
     ['maxTop3','Max Top 3','peso maximo en las tres mayores','pct',1],
-    ['minWeight','Min posicion','evita pesos testimoniales','pct',0.5],
-    ['minEffective','Min activos efectivos','1 / HHI minimo requerido','num',0.5],
+    ['minSingle','Min accion individual','evita acciones testimoniales','pct',0.5],
     ['maxHhi','Max HHI','concentracion maxima permitida','dec',0.01]
   ];
   el.innerHTML=rows.map(([key,label,sub,kind,step])=>{
@@ -3698,9 +3703,7 @@ function renderLabPortfolioView(a){
   const stops=weights.map(x=>{const start=acc;acc+=x.w*100;return `${x.color} ${start.toFixed(2)}% ${acc.toFixed(2)}%`;}).join(',');
   el.innerHTML=`
     <div class="lab-portfolio-layout">
-      <div>
-        <div class="chart-title">${labEsc(name)}</div>
-        <div class="chart-sub">Composicion del portfolio seleccionado segun los pesos historicos simulados</div>
+      <div class="lab-pie-panel">
         <div class="lab-pie" style="background:conic-gradient(${stops})"></div>
       </div>
       <div class="lab-pie-legend">
@@ -3761,8 +3764,7 @@ function setLabRiskFree(v){labRiskFreeRate=(labParseNumber(v)||0)/100;renderPort
 function setLabConstraint(key,v){
   if(!(key in labConstraints))return;
   const n=labParseNumber(v)||0;
-  if(['maxAsset','maxSingle','maxEtf','maxCrypto','maxTop3','minWeight'].includes(key))labConstraints[key]=Math.max(0,Math.min(1,n/100));
-  else if(key==='minEffective')labConstraints[key]=Math.max(1,Math.min(Math.max(1,labScenario.length),n));
+  if(['maxAsset','maxSingle','maxEtf','maxCrypto','maxTop3','minSingle'].includes(key))labConstraints[key]=Math.max(0,Math.min(1,n/100));
   else if(key==='maxHhi')labConstraints[key]=Math.max(0.01,Math.min(1,n));
   renderPortfolioLab();
 }
