@@ -1663,12 +1663,11 @@ function _getMarketData(params) {
     s = String(s).trim();
     if (s && candidates.indexOf(s) === -1) candidates.push(s);
   }
-  addCandidate(symbol);
   if (ticker && ticker.indexOf(".") === -1 && ticker.charAt(0) !== "^") addCandidate(ticker);
   if (/\.BA$/i.test(symbol)) addCandidate(symbol.replace(/\.BA$/i, ""));
+  addCandidate(symbol);
   if (ticker && ticker.indexOf(".") === -1 && ticker.charAt(0) !== "^") addCandidate(ticker + ".BA");
 
-  var minObs = 40;
   var bestSymbol = symbol;
   var bestData = [];
   for (var i = 0; i < candidates.length; i++) {
@@ -1677,11 +1676,6 @@ function _getMarketData(params) {
     if (candidateData.length > bestData.length) {
       bestSymbol = candidate;
       bestData = candidateData;
-    }
-    if (candidateData.length >= minObs) {
-      bestSymbol = candidate;
-      bestData = candidateData;
-      break;
     }
   }
 
