@@ -623,11 +623,22 @@ function _simboloGlobalParaFundamentales(ticker, yahooSymbol) {
   return s.toUpperCase();
 }
 
+// El free tier de Finnhub (metric=all) no incluye PE forward (eso requiere
+// la API de pago "Estimates"). El nombre del campo de PE trailing tampoco es
+// estable entre símbolos/versiones de la API, así que probamos varios alias
+// conocidos y usamos el primero presente.
+function _primerCampoDefinido(obj, claves) {
+  for (var i = 0; i < claves.length; i++) {
+    if (obj[claves[i]] != null) return obj[claves[i]];
+  }
+  return null;
+}
+
 function _getFundamentalesFinnhub(symbol) {
   var apiKey = PropertiesService.getScriptProperties().getProperty("FINNHUB_API_KEY");
   if (!apiKey) return null;
   var out = {
-    beta: null, peTTM: null, forwardPE: null, divYield: null,
+    beta: null, peTTM: null, divYield: null,
     week52High: null, week52Low: null, marketCap: null, proximoEarnings: null
   };
 
@@ -638,9 +649,8 @@ function _getFundamentalesFinnhub(symbol) {
     var m = data && data.metric;
     if (m) {
       out.beta       = m.beta != null ? m.beta : null;
-      out.peTTM      = m.peTTM != null ? m.peTTM : null;
-      out.forwardPE  = m.peForward != null ? m.peForward : null;
-      out.divYield   = m.dividendYieldIndicatedAnnual != null ? m.dividendYieldIndicatedAnnual : null;
+      out.peTTM      = _primerCampoDefinido(m, ["peTTM", "peExclExtraTTM", "peBasicExclExtraTTM", "peInclExtraTTM", "peNormalizedAnnual", "pe"]);
+      out.divYield   = _primerCampoDefinido(m, ["dividendYieldIndicatedAnnual", "dividendYield5Y", "currentDividendYieldTTM"]);
       out.week52High = m["52WeekHigh"] != null ? m["52WeekHigh"] : null;
       out.week52Low  = m["52WeekLow"] != null ? m["52WeekLow"] : null;
       out.marketCap  = m.marketCapitalization != null ? m.marketCapitalization : null;
@@ -676,14 +686,17 @@ function actualizarFundamentales() {
   }
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var headers = ["Ticker","Symbol","Beta","PE (TTM)","Forward PE","Div Yield %","52w High","52w Low","Market Cap (M USD)","Próximo Earnings","Última Actualización"];
+  var headers = ["Ticker","Symbol","Beta","PE (TTM)","Div Yield %","52w High","52w Low","Market Cap (M USD)","Próximo Earnings","Última Actualización"];
   var h = ss.getSheetByName(CONFIG.hojas.fundamentales);
   if (!h) {
     h = ss.insertSheet(CONFIG.hojas.fundamentales);
-    _headerStyle(h.getRange(1, 1, 1, headers.length));
-    h.getRange(1, 1, 1, headers.length).setValues([headers]);
-    [90,90,70,90,90,100,90,90,140,140,150].forEach(function(w,i){ h.setColumnWidth(i+1,w); });
+    [90,90,70,90,100,90,90,140,140,150].forEach(function(w,i){ h.setColumnWidth(i+1,w); });
   }
+  // Headers se reescriben siempre: si una corrida anterior dejó columnas viejas
+  // (ej. "Forward PE", que Finnhub free no provee), esto las mantiene en sync.
+  h.getRange(1, 1, 1, headers.length).clearContent();
+  _headerStyle(h.getRange(1, 1, 1, headers.length));
+  h.getRange(1, 1, 1, headers.length).setValues([headers]);
 
   var port = _getHoja(CONFIG.hojas.portfolio);
   if (!port || port.getLastRow() < CONFIG.filaInicio) return;
@@ -711,7 +724,7 @@ function actualizarFundamentales() {
     var ahora = Utilities.formatDate(new Date(), "America/Argentina/Buenos_Aires", "dd/MM/yyyy HH:mm");
     filasOut.push([
       ticker, simbolo,
-      f ? f.beta : "", f ? f.peTTM : "", f ? f.forwardPE : "", f ? f.divYield : "",
+      f ? f.beta : "", f ? f.peTTM : "", f ? f.divYield : "",
       f ? f.week52High : "", f ? f.week52Low : "", f ? f.marketCap : "",
       f && f.proximoEarnings ? f.proximoEarnings : "", ahora
     ]);

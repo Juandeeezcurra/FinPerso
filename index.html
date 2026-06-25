@@ -2709,15 +2709,15 @@ function renderFundamentales(){
   const thead=document.getElementById('fundamentales-thead');
   const tbody=document.getElementById('tbl-fundamentales');
   if(!thead||!tbody)return;
-  thead.innerHTML='<th>Ticker</th><th>Beta</th><th>PE (TTM)</th><th>Forward PE</th><th>Div. Yield</th><th>Rango 52s</th><th>Market Cap</th><th>Próximo earnings</th>';
+  thead.innerHTML='<th>Ticker</th><th>Beta</th><th>PE (TTM)</th><th>Div. Yield</th><th>Rango 52s</th><th>Market Cap</th><th>Próximo earnings</th>';
   tbody.innerHTML='';
   document.getElementById('fundamentales-count').textContent=fundamentales.length+' ticker'+(fundamentales.length===1?'':'s con cobertura');
   if(fundamentales.length===0){
-    tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Sin datos de fundamentales todavía.</td></tr>';
+    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Sin datos de fundamentales todavía.</td></tr>';
   }else{
     const hoy=new Date();
     fundamentales.slice().sort((a,b)=>(a['Ticker']||'').localeCompare(b['Ticker']||'')).forEach(f=>{
-      const beta=f['Beta'],pe=f['PE (TTM)'],fpe=f['Forward PE'],div=f['Div Yield %'];
+      const beta=f['Beta'],pe=f['PE (TTM)'],div=f['Div Yield %'];
       const lo=f['52w Low'],hi=f['52w High'],cap=f['Market Cap (M USD)'],earn=f['Próximo Earnings'];
       let earnCell='<span class="cell-muted">—</span>';
       if(earn){
@@ -2730,7 +2730,6 @@ function renderFundamentales(){
         <td><strong>${f['Ticker']}</strong></td>
         <td class="mono">${beta!==''&&beta!=null?parseFloat(beta).toFixed(2):'—'}</td>
         <td class="mono">${pe!==''&&pe!=null?parseFloat(pe).toFixed(1):'—'}</td>
-        <td class="mono">${fpe!==''&&fpe!=null?parseFloat(fpe).toFixed(1):'—'}</td>
         <td class="mono">${div!==''&&div!=null?parseFloat(div).toFixed(2)+'%':'—'}</td>
         <td class="mono cell-muted">${lo!=null&&lo!==''&&hi!=null&&hi!==''?'$'+parseFloat(lo).toFixed(0)+' – $'+parseFloat(hi).toFixed(0):'—'}</td>
         <td class="mono cell-muted">${cap!=null&&cap!==''?'U$S '+(parseFloat(cap)/1000).toFixed(1)+'B':'—'}</td>
