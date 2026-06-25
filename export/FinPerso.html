@@ -2071,13 +2071,13 @@
             <div class="chart-title">Frontera eficiente</div>
             <div class="chart-sub">Puntos long-only con restricciones; retornos historicos</div>
             <canvas class="lab-canvas" id="lab-frontier" width="900" height="420"></canvas>
-            <div class="lab-legend"><span><i class="lab-legend-dot" style="background:#fbbf24"></i>Actual</span><span><i class="lab-legend-dot" style="background:#60a5fa"></i>Simulado</span><span><i class="lab-legend-dot" style="background:#4ade80"></i>Min vol restr.</span><span><i class="lab-legend-dot" style="background:#a78bfa"></i>Max Sharpe restr.</span></div>
+            <div class="lab-legend"><span><i class="lab-legend-dot" style="background:#fb7185"></i>Actual</span><span><i class="lab-legend-dot" style="background:#f97316"></i>Simulado</span><span><i class="lab-legend-dot" style="background:#4ade80"></i>Min vol restr.</span><span><i class="lab-legend-dot" style="background:#a78bfa"></i>Max Sharpe restr.</span></div>
           </div>
           <div class="chart-card">
             <div class="chart-title">Drawdown</div>
             <div class="chart-sub">Caida pico-valle del portfolio actual y simulado</div>
             <canvas class="lab-canvas" id="lab-drawdown" width="900" height="420"></canvas>
-            <div class="lab-legend"><span><i class="lab-legend-dot" style="background:#f87171"></i>Actual</span><span><i class="lab-legend-dot" style="background:#60a5fa"></i>Simulado</span></div>
+            <div class="lab-legend"><span><i class="lab-legend-dot" style="background:#fb7185"></i>Actual</span><span><i class="lab-legend-dot" style="background:#f97316"></i>Simulado</span></div>
           </div>
         </div>
 
@@ -3607,7 +3607,7 @@ function drawLabScatter(analytics){
   const {ctx,W,H}=labSetCanvasSize(c);ctx.clearRect(0,0,W,H);ctx.fillStyle='rgba(0,0,0,0.10)';ctx.fillRect(0,0,W,H);
   if(!analytics){ctx.fillStyle='#888';ctx.font='14px sans-serif';ctx.fillText(labAnalyticsIssue(),24,32);return;}
   const yRet=p=>isFinite(p.cagr)?p.cagr:p.ret;
-  const special=[{...analytics.current,label:'Actual',color:'#fbbf24'},{...analytics.sim,label:'Sim',color:'#60a5fa'},{...analytics.minVol,label:'Min Vol restr.',color:'#4ade80'},{...analytics.maxSharpeConstrained,label:'Sharpe restr.',color:'#a78bfa'}].filter(p=>p&&isFinite(p.vol)&&isFinite(yRet(p)));
+  const special=[{...analytics.current,label:'Actual',color:'#fb7185'},{...analytics.sim,label:'Sim',color:'#f97316'},{...analytics.minVol,label:'Min Vol restr.',color:'#4ade80'},{...analytics.maxSharpeConstrained,label:'Sharpe restr.',color:'#a78bfa'}].filter(p=>p&&isFinite(p.vol)&&isFinite(yRet(p)));
   const xs=analytics.points.map(p=>p.vol).concat(special.map(p=>p.vol)),ys=analytics.points.map(yRet).concat(special.map(yRet));
   const xMinRaw=Math.min(...xs),xMaxRaw=Math.max(...xs),xPad=Math.max(0.015,(xMaxRaw-xMinRaw)*0.22);
   let xmin=Math.max(0,xMinRaw-xPad),xmax=xMaxRaw+xPad,ymin=Math.min(...ys)*1.1,ymax=Math.max(...ys)*1.1;if(ymin>0)ymin=0;
@@ -3639,14 +3639,14 @@ function drawLabScatter(analytics){
     ctx.beginPath();ctx.moveTo(x,24);ctx.lineTo(x,H-46);ctx.stroke();ctx.textAlign='center';ctx.fillText(labPct(xVal,0),x,H-28);ctx.textAlign='right';
   }
   ctx.fillStyle='rgba(96,165,250,0.22)';analytics.points.forEach(p=>{ctx.beginPath();ctx.arc(X(p.vol),Y(yRet(p)),2,0,Math.PI*2);ctx.fill();});
-  special.forEach(p=>{const primary=p.label==='Actual'||p.label==='Sharpe restr.',r=primary?9:6;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(X(p.vol),Y(yRet(p)),r,0,Math.PI*2);ctx.fill();if(primary){ctx.strokeStyle='rgba(255,255,255,0.72)';ctx.lineWidth=2;ctx.stroke();}ctx.fillStyle='#e5e7eb';ctx.font=primary?'14px sans-serif':'12px sans-serif';ctx.textAlign='left';ctx.fillText(p.label,X(p.vol)+12,Y(yRet(p))-9);});
+  special.forEach(p=>{const primary=p.label==='Actual'||p.label==='Sim'||p.label==='Sharpe restr.',r=primary?9:6;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(X(p.vol),Y(yRet(p)),r,0,Math.PI*2);ctx.fill();if(primary){ctx.strokeStyle='rgba(255,255,255,0.72)';ctx.lineWidth=2;ctx.stroke();}ctx.fillStyle='#e5e7eb';ctx.font=primary?'14px sans-serif':'12px sans-serif';ctx.textAlign='left';ctx.fillText(p.label,X(p.vol)+12,Y(yRet(p))-9);});
   ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('Volatilidad anual',W/2,H-8);ctx.save();ctx.translate(16,H/2+50);ctx.rotate(-Math.PI/2);ctx.fillText('CAGR historico anual',0,0);ctx.restore();ctx.textAlign='left';
 }
 function drawLabDrawdown(analytics){
   const c=document.getElementById('lab-drawdown');if(!c)return;
   const {ctx,W,H}=labSetCanvasSize(c);ctx.clearRect(0,0,W,H);ctx.fillStyle='rgba(0,0,0,0.10)';ctx.fillRect(0,0,W,H);
   if(!analytics){ctx.fillStyle='#888';ctx.font='14px sans-serif';ctx.fillText(labAnalyticsIssue(),24,32);return;}
-  const series=[{label:'Actual',data:analytics.currentDD.series,color:'#f87171'},{label:'Simulado',data:analytics.simDD.series,color:'#60a5fa'}];
+  const series=[{label:'Actual',data:analytics.currentDD.series,color:'#fb7185'},{label:'Simulado',data:analytics.simDD.series,color:'#f97316'}];
   const ymin=Math.min(...series.flatMap(s=>s.data),-0.01),ymax=0;
   const X=(i,n)=>52+i/Math.max(1,n-1)*(W-78),Y=y=>H-44-(y-ymin)/(ymax-ymin)*(H-72);
   ctx.strokeStyle='rgba(148,163,184,0.18)';

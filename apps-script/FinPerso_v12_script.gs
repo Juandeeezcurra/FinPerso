@@ -8,9 +8,10 @@ var CONFIG = {
     operaciones: "Operaciones",
     portfolio:   "Portfolio",
     historial:   "Historial",
-    tickers:     "Tickers",
-    valores:     "Valores",
-    efectivo:    "Efectivo",
+    tickers:       "Tickers",
+    valores:       "Valores",
+    efectivo:      "Efectivo",
+    fundamentales: "Fundamentales",
   },
   eft: {
     fecha:  1,
@@ -62,7 +63,7 @@ var CONFIG = {
 //  El frontend debe enviar ?token=<valor> (GET) o payload.token (POST)
 // ============================================================
 
-var ALLOWED_SHEETS  = ["Portfolio", "Operaciones", "Efectivo", "Historial", "Benchmark", "MarketData", "Valores"];
+var ALLOWED_SHEETS  = ["Portfolio", "Operaciones", "Efectivo", "Historial", "Benchmark", "MarketData", "Valores", "Fundamentales"];
 var ORDENES_VALIDAS = ["Compra", "Venta"];
 var MONEDAS_VALIDAS = ["ARS", "USD"];
 var TIPOS_VALIDOS   = ["Equity", "Bonos", "Crypto", "Cash", "Agro"];
@@ -608,6 +609,108 @@ function _registrarTickers(tickers, nombresEnOps) {
     estado[ticker].push({ fila: f, symbol: "", online: "Pendiente" });
     _intentarYahoo(h, f, ticker);
   });
+}
+
+// ============================================================
+//  2bis. FUNDAMENTALES (Beta, ratios, próximo earnings) — Finnhub
+// ============================================================
+
+// Para CEDEARs y acciones con ADR, el símbolo global (NASDAQ/NYSE) es el
+// mismo ticker sin el sufijo ".BA" que usa Yahoo para la cotización en ARS.
+function _simboloGlobalParaFundamentales(ticker, yahooSymbol) {
+  var s = String(yahooSymbol || ticker || "").trim();
+  if (/\.BA$/i.test(s)) s = s.replace(/\.BA$/i, "");
+  return s.toUpperCase();
+}
+
+function _getFundamentalesFinnhub(symbol) {
+  var apiKey = PropertiesService.getScriptProperties().getProperty("FINNHUB_API_KEY");
+  if (!apiKey) return null;
+  var out = {
+    beta: null, peTTM: null, forwardPE: null, divYield: null,
+    week52High: null, week52Low: null, marketCap: null, proximoEarnings: null
+  };
+
+  try {
+    var url = "https://finnhub.io/api/v1/stock/metric?symbol=" + encodeURIComponent(symbol) + "&metric=all&token=" + apiKey;
+    var res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    var data = JSON.parse(res.getContentText());
+    var m = data && data.metric;
+    if (m) {
+      out.beta       = m.beta != null ? m.beta : null;
+      out.peTTM      = m.peTTM != null ? m.peTTM : null;
+      out.forwardPE  = m.peForward != null ? m.peForward : null;
+      out.divYield   = m.dividendYieldIndicatedAnnual != null ? m.dividendYieldIndicatedAnnual : null;
+      out.week52High = m["52WeekHigh"] != null ? m["52WeekHigh"] : null;
+      out.week52Low  = m["52WeekLow"] != null ? m["52WeekLow"] : null;
+      out.marketCap  = m.marketCapitalization != null ? m.marketCapitalization : null;
+    }
+  } catch(e) {
+    Logger.log("Error fundamentales Finnhub " + symbol + ": " + e.message);
+  }
+
+  try {
+    var hoy   = new Date();
+    var desde = Utilities.formatDate(hoy, "America/Argentina/Buenos_Aires", "yyyy-MM-dd");
+    var hasta = Utilities.formatDate(new Date(hoy.getTime() + 120 * 24 * 60 * 60 * 1000), "America/Argentina/Buenos_Aires", "yyyy-MM-dd");
+    var urlCal = "https://finnhub.io/api/v1/calendar/earnings?from=" + desde + "&to=" + hasta + "&symbol=" + encodeURIComponent(symbol) + "&token=" + apiKey;
+    var resCal = UrlFetchApp.fetch(urlCal, { muteHttpExceptions: true });
+    var dataCal = JSON.parse(resCal.getContentText());
+    var lista = (dataCal && dataCal.earningsCalendar) || [];
+    if (lista.length > 0) {
+      lista.sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
+      out.proximoEarnings = lista[0].date;
+    }
+  } catch(e) {
+    Logger.log("Error earnings Finnhub " + symbol + ": " + e.message);
+  }
+
+  return out;
+}
+
+function actualizarFundamentales() {
+  var apiKey = PropertiesService.getScriptProperties().getProperty("FINNHUB_API_KEY");
+  if (!apiKey) {
+    Logger.log("Falta FINNHUB_API_KEY en Script Properties — actualizarFundamentales() abortado.");
+    return;
+  }
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var headers = ["Ticker","Symbol","Beta","PE (TTM)","Forward PE","Div Yield %","52w High","52w Low","Market Cap (M USD)","Próximo Earnings","Última Actualización"];
+  var h = ss.getSheetByName(CONFIG.hojas.fundamentales);
+  if (!h) {
+    h = ss.insertSheet(CONFIG.hojas.fundamentales);
+    _headerStyle(h.getRange(1, 1, 1, headers.length));
+    h.getRange(1, 1, 1, headers.length).setValues([headers]);
+    [90,90,70,90,90,100,90,90,140,140,150].forEach(function(w,i){ h.setColumnWidth(i+1,w); });
+  }
+
+  var tkH = _getHoja(CONFIG.hojas.tickers);
+  if (!tkH || tkH.getLastRow() < 2) return;
+  var datos = tkH.getRange(2, 1, tkH.getLastRow() - 1, 4).getValues();
+
+  var filasOut = [];
+  var vistos = {};
+  datos.forEach(function(row) {
+    var ticker = row[0], yahooSymbol = row[2], online = row[3];
+    if (!ticker || online !== "Sí") return;
+    var simbolo = _simboloGlobalParaFundamentales(ticker, yahooSymbol);
+    if (vistos[simbolo]) return;
+    vistos[simbolo] = true;
+
+    var f = _getFundamentalesFinnhub(simbolo);
+    var ahora = Utilities.formatDate(new Date(), "America/Argentina/Buenos_Aires", "dd/MM/yyyy HH:mm");
+    filasOut.push([
+      ticker, simbolo,
+      f ? f.beta : "", f ? f.peTTM : "", f ? f.forwardPE : "", f ? f.divYield : "",
+      f ? f.week52High : "", f ? f.week52Low : "", f ? f.marketCap : "",
+      f && f.proximoEarnings ? f.proximoEarnings : "", ahora
+    ]);
+    Utilities.sleep(250); // respetar el rate limit del free tier de Finnhub
+  });
+
+  if (h.getLastRow() > 1) h.getRange(2, 1, h.getLastRow() - 1, headers.length).clearContent();
+  if (filasOut.length > 0) h.getRange(2, 1, filasOut.length, headers.length).setValues(filasOut);
 }
 
 // ============================================================
@@ -1271,6 +1374,7 @@ function actualizarTodo() {
   actualizarPrecios();
   completarOperaciones();
   recalcularPortfolio();
+  try { actualizarFundamentales(); } catch(e) { Logger.log("Error actualizarFundamentales: " + e.message); }
   enviarReporteDiario();
   _guardarSnapshotDiario();
   // precioAyer lo escribe actualizarPrecios() con el previousClose de Yahoo.

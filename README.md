@@ -33,6 +33,23 @@ El tracker esta orientado al mercado argentino y maneja:
 - Tipo de cambio CCL como referencia para valuacion en USD de posiciones en ARS.
 - Calculo de precio promedio de compra (PPC), rendimiento y porcentaje del portfolio.
 
+## Norte de producto
+
+Portfolio Lab queda como referencia para futuras secciones grandes dentro de FinPerso. La vara esperada es una mezcla de profundidad tecnica, claridad visual y utilidad practica: no solo mostrar datos, sino ayudar a entender que significan y que decision habilitan.
+
+Principios clave:
+
+- **Tecnico pero usable:** incluir conceptos reales del dominio cuando sumen valor, como Sharpe, volatilidad, drawdown, correlacion, HHI, contribucion al riesgo o restricciones, pero explicados con labels, leyendas, estados y lecturas accionables.
+- **Interaccion antes que reporte:** priorizar controles que permitan simular escenarios, mover supuestos, agregar/quitar elementos y comparar resultados. La app tiene que sentirse como una herramienta de trabajo, no como un dashboard estatico.
+- **Visualizaciones con contexto:** los graficos deben tener leyendas, ejes, numeros, colores distinguibles y foco en lo importante. Evitar graficos lindos pero ambiguos.
+- **Lectura FinPerso:** cada modulo complejo deberia devolver una interpretacion en lenguaje claro: que esta pasando, que riesgo aparece, que trade-off existe y que conviene mirar despues.
+- **Restricciones visibles:** cuando haya optimizacion o recomendaciones, mostrar supuestos, limites y posibles problemas de factibilidad. Si un resultado es historico, estimado o diagnostico, debe decirlo.
+- **Diseño sobrio y premium:** mantener una UI oscura, prolija, densa pero respirable, con tarjetas alineadas, iconos reales, controles consistentes y jerarquias visuales claras.
+- **Mobile y uso diario:** todo lo nuevo debe poder usarse desde GitHub Pages en celular y desde desktop sin depender de Netlify.
+- **Evolucion incremental:** construir features completas pero extensibles, dejando nombres, funciones y documentacion pensados para seguir iterando sin reescribir todo.
+
+Para nuevos proyectos dentro de la app, Portfolio Lab es el benchmark de complejidad, estilo y nivel de acabado.
+
 ## Estructura del repo
 
 - `index.html`: app web principal.
