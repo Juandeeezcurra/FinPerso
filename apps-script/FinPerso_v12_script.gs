@@ -685,15 +685,24 @@ function actualizarFundamentales() {
     [90,90,70,90,90,100,90,90,140,140,150].forEach(function(w,i){ h.setColumnWidth(i+1,w); });
   }
 
-  var tkH = _getHoja(CONFIG.hojas.tickers);
-  if (!tkH || tkH.getLastRow() < 2) return;
-  var datos = tkH.getRange(2, 1, tkH.getLastRow() - 1, 4).getValues();
+  var port = _getHoja(CONFIG.hojas.portfolio);
+  if (!port || port.getLastRow() < CONFIG.filaInicio) return;
+  var cp = CONFIG.port;
+  var posiciones = port.getRange(CONFIG.filaInicio, 1, port.getLastRow() - CONFIG.filaInicio + 1, 16).getValues()
+    .filter(function(row) {
+      var ticker = row[cp.ticker - 1], nominales = _toNum(row[cp.nominales - 1]);
+      return ticker && ticker !== "ARS" && ticker !== "USD" && nominales > 0;
+    });
+  if (posiciones.length === 0) return;
+
+  var tkData = _getTickers(); // map: ticker -> Yahoo Symbol (solo tickers "Online: Sí")
 
   var filasOut = [];
   var vistos = {};
-  datos.forEach(function(row) {
-    var ticker = row[0], yahooSymbol = row[2], online = row[3];
-    if (!ticker || online !== "Sí") return;
+  posiciones.forEach(function(row) {
+    var ticker = row[cp.ticker - 1];
+    var yahooSymbol = tkData.map[ticker];
+    if (!yahooSymbol) return; // sin cotización online, sin cobertura de fundamentales
     var simbolo = _simboloGlobalParaFundamentales(ticker, yahooSymbol);
     if (vistos[simbolo]) return;
     vistos[simbolo] = true;
