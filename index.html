@@ -2057,6 +2057,7 @@
             <button class="table-ctrl-btn" onclick="refreshPortfolioLab()" title="Vuelve a descargar series historicas desde Yahoo via Apps Script">Recargar precios</button>
             <button class="table-ctrl-btn" onclick="resetLabScenario()" title="Vuelve los pesos simulados a los pesos actuales">Restaurar pesos</button>
             <button class="table-ctrl-btn" onclick="normalizeLabScenario()" title="Reescala los pesos simulados para que sumen exactamente 100%">Reescalar a 100%</button>
+            <button class="table-ctrl-btn" onclick="saveLabScenario()" title="Guarda los pesos y restricciones actuales para volver a verlos despues">Guardar escenario</button>
           </div>
           <div class="lab-status" id="lab-status">Listo</div>
         </div>
@@ -2082,6 +2083,14 @@
             <div class="chart-sub">Caps para que el Max Sharpe sea invertible, no solo academico</div>
             <div class="lab-constraints" id="lab-constraints"></div>
           </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-header-row">
+            <span class="table-title">Escenarios guardados</span>
+            <span class="lab-status" id="lab-saved-count"></span>
+          </div>
+          <div class="lab-table-fit"><table class="lab-alts-table"><thead><tr><th>Nombre</th><th>Guardado</th><th>CAGR</th><th>Vol</th><th>Sharpe</th><th></th></tr></thead><tbody id="lab-saved-body"></tbody></table></div>
         </div>
 
         <div class="lab-grid">
@@ -2318,11 +2327,16 @@ let labConstraints={maxAsset:0.35,maxSingle:0.25,maxEtf:0.35,maxCrypto:0.10,maxT
 let labSelectedPortfolio='maxSharpeConstrained';
 let labLastAnalytics=null;
 const LAB_CANDIDATE_STORE='finperso_lab_candidates_v1';
+const LAB_CONSTRAINTS_STORE='finperso_lab_constraints_v1';
+const LAB_SAVED_STORE='finperso_lab_saved_v1';
 const LAB_SYMBOL_ALIASES={ADGO:'AGRO'};
 const LAB_MIN_OBS=80;
 const LAB_ETF_TICKERS=new Set(['SPY','VOO','VTI','QQQ','IWM','DIA','VEA','VWO','ACWI','URTH','EWY','EEM','IBIT','GLD','SLV','TLT','HYG','LQD']);
 let labCandidateAssets=[];
 try{labCandidateAssets=JSON.parse(localStorage.getItem(LAB_CANDIDATE_STORE)||'[]').filter(x=>x&&x.ticker);}catch(e){labCandidateAssets=[];}
+try{Object.assign(labConstraints,JSON.parse(localStorage.getItem(LAB_CONSTRAINTS_STORE)||'{}'));}catch(e){}
+let labSavedScenarios=[];
+try{labSavedScenarios=JSON.parse(localStorage.getItem(LAB_SAVED_STORE)||'[]').filter(x=>x&&x.id);}catch(e){labSavedScenarios=[];}
 
 const portfolioCols=[
   {key:'Activo',label:'Activo',visible:true},{key:'Tipo',label:'Tipo',visible:true},
@@ -3894,7 +3908,7 @@ function renderPortfolioLab(){
   buildLabScenario();
   const a=labAnalytics();
   labLastAnalytics=a;
-  renderLabMetrics(a);renderLabScenario();renderLabConstraints(a);renderLabSuggested(a);renderLabQuality(a);renderLabRiskContrib(a);renderLabCorr(a);renderLabAlts(a);drawLabScatter(a);drawLabDrawdown(a);renderLabComments(a);
+  renderLabMetrics(a);renderLabScenario();renderLabConstraints(a);renderLabSuggested(a);renderLabQuality(a);renderLabRiskContrib(a);renderLabCorr(a);renderLabAlts(a);drawLabScatter(a);drawLabDrawdown(a);renderLabComments(a);renderLabSaved();
   const needsData=labScenario.some(s=>!labMarketData[s.ticker]||!Array.isArray(labMarketData[s.ticker].data)||labMarketData[s.ticker].data.length<LAB_MIN_OBS);
   if(needsData&&!labLoading&&!labDataAttempted)loadLabMarketData();
 }
@@ -3943,6 +3957,7 @@ function setLabConstraint(key,v){
   const n=labParseNumber(v)||0;
   if(['maxAsset','maxSingle','maxEtf','maxCrypto','maxTop3','minSingle'].includes(key))labConstraints[key]=Math.max(0,Math.min(1,n/100));
   else if(key==='maxHhi')labConstraints[key]=Math.max(0.01,Math.min(1,n));
+  localStorage.setItem(LAB_CONSTRAINTS_STORE,JSON.stringify(labConstraints));
   renderPortfolioLab();
 }
 function resetLabScenario(){buildLabScenario(true);const status=document.getElementById('lab-status');if(status)status.textContent='Pesos restaurados al portfolio actual';renderPortfolioLab();}
@@ -3988,6 +4003,81 @@ function clearLabCandidateAssets(){
   labDataAttempted=false;
   const status=document.getElementById('lab-status');if(status)status.textContent='Activos nuevos eliminados';
   renderPortfolioLab();
+}
+function labSaveSavedScenarios(){localStorage.setItem(LAB_SAVED_STORE,JSON.stringify(labSavedScenarios));}
+function saveLabScenario(){
+  const name=prompt('Nombre para este escenario:');
+  if(!name)return;
+  const a=labLastAnalytics;
+  const snapshot={
+    id:Date.now()+'-'+Math.random().toString(36).slice(2,8),
+    name:name.trim().slice(0,60),
+    savedAt:Date.now(),
+    range:labRange,
+    riskFree:labRiskFreeRate,
+    constraints:{...labConstraints},
+    weights:labScenario.map(s=>({ticker:s.ticker,symbol:s.symbol,name:s.name,tipo:s.tipo,weight:s.weight,isCandidate:!!s.isCandidate})),
+    stats:a&&a.sim?{cagr:a.sim.cagr,vol:a.sim.vol,sharpe:a.sim.realizedSharpe}:null
+  };
+  labSavedScenarios.unshift(snapshot);
+  labSaveSavedScenarios();
+  const status=document.getElementById('lab-status');if(status)status.textContent='Escenario guardado: '+snapshot.name;
+  renderLabSaved();
+}
+function loadLabScenario(id){
+  const snap=labSavedScenarios.find(x=>x.id===id);
+  if(!snap)return;
+  const real=new Set(labInvestableRows().map(p=>String(p['Ticker']||'').toUpperCase()));
+  const existingCandidates=new Set(labCandidateAssets.map(x=>x.ticker));
+  let addedCandidates=false;
+  (snap.weights||[]).forEach(w=>{
+    if(w.isCandidate&&!real.has(w.ticker)&&!existingCandidates.has(w.ticker)){
+      labCandidateAssets.push({ticker:w.ticker,symbol:w.symbol||labAnalysisSymbol(w.ticker),name:w.name||w.ticker,tipo:w.tipo||labInferType(w.ticker),addedAt:Date.now()});
+      existingCandidates.add(w.ticker);
+      addedCandidates=true;
+    }
+  });
+  if(addedCandidates){labSaveCandidates();labDataAttempted=false;}
+  Object.assign(labConstraints,snap.constraints||{});
+  localStorage.setItem(LAB_CONSTRAINTS_STORE,JSON.stringify(labConstraints));
+  labRange=snap.range||labRange;
+  labRiskFreeRate=snap.riskFree!=null?snap.riskFree:labRiskFreeRate;
+  buildLabScenario(true);
+  const weightMap=new Map((snap.weights||[]).map(w=>[w.ticker,w.weight]));
+  labScenario.forEach(s=>{if(weightMap.has(s.ticker))s.weight=weightMap.get(s.ticker);});
+  updateLabRangeUI();
+  const rf=document.getElementById('lab-rf');if(rf)rf.value=(labRiskFreeRate*100).toFixed(1);
+  const status=document.getElementById('lab-status');if(status)status.textContent='Escenario cargado: '+snap.name;
+  renderPortfolioLab();
+}
+function deleteLabScenario(id){
+  labSavedScenarios=labSavedScenarios.filter(x=>x.id!==id);
+  labSaveSavedScenarios();
+  renderLabSaved();
+}
+function renderLabSaved(){
+  const body=document.getElementById('lab-saved-body');if(!body)return;
+  const count=document.getElementById('lab-saved-count');if(count)count.textContent=labSavedScenarios.length+' guardado'+(labSavedScenarios.length===1?'':'s');
+  if(!labSavedScenarios.length){
+    body.innerHTML='<tr><td colspan="6" class="cell-muted" style="text-align:center;padding:18px">Todavia no guardaste ningun escenario.</td></tr>';
+    return;
+  }
+  body.innerHTML=labSavedScenarios.map(s=>{
+    const d=new Date(s.savedAt);
+    const fecha=d.toLocaleDateString('es-AR')+' '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+    const st=s.stats;
+    return `<tr>
+      <td><strong>${labEsc(s.name)}</strong></td>
+      <td class="cell-muted">${labEsc(fecha)}</td>
+      <td class="mono ${st&&st.cagr<0?'neg':'pos'}">${st&&st.cagr!=null?labPct(st.cagr,1):'—'}</td>
+      <td class="mono">${st&&st.vol!=null?labPct(st.vol,1):'—'}</td>
+      <td class="mono ${st&&st.sharpe<0.5?'neg':st&&st.sharpe>1?'pos':''}">${st&&st.sharpe!=null?labNum(st.sharpe,2):'—'}</td>
+      <td>
+        <button class="lab-view-btn" onclick="loadLabScenario('${s.id}')" title="Cargar este escenario">Cargar</button>
+        <button class="lab-view-btn" onclick="if(confirm('¿Eliminar este escenario guardado?'))deleteLabScenario('${s.id}')" title="Eliminar">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
 }
 
 const titles={resumen:'Resumen',portfolio:'Posiciones',fundamentales:'Fundamentales',lab:'Portfolio Lab',operaciones:'Operaciones',efectivo:'Efectivo'};
