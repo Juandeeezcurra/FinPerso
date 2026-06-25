@@ -2091,6 +2091,7 @@
             <span class="lab-status" id="lab-saved-count"></span>
           </div>
           <div class="lab-table-fit"><table class="lab-alts-table"><thead><tr><th>Nombre</th><th>Guardado</th><th>CAGR</th><th>Vol</th><th>Sharpe</th><th></th></tr></thead><tbody id="lab-saved-body"></tbody></table></div>
+          <div class="lab-portfolio-view" id="lab-saved-detail"></div>
         </div>
 
         <div class="lab-grid">
@@ -2337,6 +2338,7 @@ try{labCandidateAssets=JSON.parse(localStorage.getItem(LAB_CANDIDATE_STORE)||'[]
 try{Object.assign(labConstraints,JSON.parse(localStorage.getItem(LAB_CONSTRAINTS_STORE)||'{}'));}catch(e){}
 let labSavedScenarios=[];
 try{labSavedScenarios=JSON.parse(localStorage.getItem(LAB_SAVED_STORE)||'[]').filter(x=>x&&x.id);}catch(e){labSavedScenarios=[];}
+let labSavedSelected=null;
 
 const portfolioCols=[
   {key:'Activo',label:'Activo',visible:true},{key:'Tipo',label:'Tipo',visible:true},
@@ -4020,6 +4022,7 @@ function saveLabScenario(){
     stats:a&&a.sim?{cagr:a.sim.cagr,vol:a.sim.vol,sharpe:a.sim.realizedSharpe}:null
   };
   labSavedScenarios.unshift(snapshot);
+  labSavedSelected=snapshot.id;
   labSaveSavedScenarios();
   const status=document.getElementById('lab-status');if(status)status.textContent='Escenario guardado: '+snapshot.name;
   renderLabSaved();
@@ -4052,14 +4055,40 @@ function loadLabScenario(id){
 }
 function deleteLabScenario(id){
   labSavedScenarios=labSavedScenarios.filter(x=>x.id!==id);
+  if(labSavedSelected===id)labSavedSelected=null;
   labSaveSavedScenarios();
   renderLabSaved();
+}
+function viewLabScenario(id){
+  labSavedSelected=labSavedSelected===id?null:id;
+  renderLabSaved();
+}
+function renderLabSavedDetail(){
+  const el=document.getElementById('lab-saved-detail');if(!el)return;
+  const snap=labSavedScenarios.find(x=>x.id===labSavedSelected);
+  if(!snap){el.innerHTML='';return;}
+  const colors=['#a78bfa','#60a5fa','#34d399','#fbbf24','#f87171','#22d3ee','#fb7185','#c084fc'];
+  const weights=(snap.weights||[]).filter(w=>w.weight>0.005).sort((a,b)=>b.weight-a.weight)
+    .map((w,i)=>({...w,color:colors[i%colors.length]}));
+  let acc=0;
+  const stops=weights.map(w=>{const start=acc;acc+=w.weight*100;return `${w.color} ${start.toFixed(2)}% ${acc.toFixed(2)}%`;}).join(',');
+  el.innerHTML=`
+    <div class="lab-portfolio-layout">
+      <div class="lab-pie-panel">
+        <div class="lab-pie" style="background:conic-gradient(${stops})"></div>
+      </div>
+      <div class="lab-pie-legend">
+        ${weights.map(w=>`<div class="lab-pie-item"><i class="lab-pie-dot" style="background:${w.color}"></i><strong>${labEsc(w.ticker)}</strong><span>${(w.weight*100).toFixed(1)}%</span></div>`).join('')||'<div class="lab-note">Este escenario no tiene pesos guardados.</div>'}
+      </div>
+    </div>
+  `;
 }
 function renderLabSaved(){
   const body=document.getElementById('lab-saved-body');if(!body)return;
   const count=document.getElementById('lab-saved-count');if(count)count.textContent=labSavedScenarios.length+' guardado'+(labSavedScenarios.length===1?'':'s');
   if(!labSavedScenarios.length){
     body.innerHTML='<tr><td colspan="6" class="cell-muted" style="text-align:center;padding:18px">Todavia no guardaste ningun escenario.</td></tr>';
+    renderLabSavedDetail();
     return;
   }
   body.innerHTML=labSavedScenarios.map(s=>{
@@ -4073,11 +4102,13 @@ function renderLabSaved(){
       <td class="mono">${st&&st.vol!=null?labPct(st.vol,1):'—'}</td>
       <td class="mono ${st&&st.sharpe<0.5?'neg':st&&st.sharpe>1?'pos':''}">${st&&st.sharpe!=null?labNum(st.sharpe,2):'—'}</td>
       <td>
+        <button class="lab-view-btn ${labSavedSelected===s.id?'active':''}" onclick="viewLabScenario('${s.id}')" title="Ver composicion guardada">Ver</button>
         <button class="lab-view-btn" onclick="loadLabScenario('${s.id}')" title="Cargar este escenario">Cargar</button>
         <button class="lab-view-btn" onclick="if(confirm('¿Eliminar este escenario guardado?'))deleteLabScenario('${s.id}')" title="Eliminar">✕</button>
       </td>
     </tr>`;
   }).join('');
+  renderLabSavedDetail();
 }
 
 const titles={resumen:'Resumen',portfolio:'Posiciones',fundamentales:'Fundamentales',lab:'Portfolio Lab',operaciones:'Operaciones',efectivo:'Efectivo'};
