@@ -3720,7 +3720,10 @@ function labAnalytics(){
   let equal=labPortStats(Array(n).fill(1/n),mu,covM);
   let minVol={vol:Infinity},maxSharpeConstrained={sharpe:-Infinity,realizedSharpe:-Infinity},points=[];
   const caps=labCaps(assets);
-  const score=s=>isFinite(s.realizedSharpe)?s.realizedSharpe:s.sharpe;
+  // En modo historico, rankear por Sharpe realizado (lo que de verdad hubiera pasado) evita perseguir el ruido del
+  // promedio historico. En Black-Litterman, el punto es justamente usar el retorno ajustado por equilibrio+views,
+  // asi que el ranking usa el Sharpe del modelo (mu activo) para que las views influyan en el portfolio sugerido.
+  const score=s=>labMuMode==='bl'?s.sharpe:(isFinite(s.realizedSharpe)?s.realizedSharpe:s.sharpe);
   for(let i=0;i<6500;i++){
     const w=labRandomWeightsCapped(caps,assets);
     if(w){
