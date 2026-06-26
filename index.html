@@ -2068,6 +2068,16 @@
           <div class="lab-status" id="lab-status">Listo</div>
         </div>
 
+        <div class="lab-toolbar">
+          <div class="lab-toolbar-group">
+            <span class="lab-status">Retornos esperados</span>
+            <button class="table-ctrl-btn" id="lab-mode-hist" onclick="setLabMuMode('hist')" title="Promedio historico simple (Markowitz clasico)">Markowitz clasico</button>
+            <button class="table-ctrl-btn" id="lab-mode-bl" onclick="setLabMuMode('bl')" title="Equilibrio implicito + tus views, con shrinkage en la covarianza">Black-Litterman</button>
+            <span class="lab-status" id="lab-tau-wrap" style="display:none">Tau <input class="lab-control" id="lab-tau" type="number" min="0.005" max="1" step="0.005" value="0.05" onchange="setLabTau(this.value)" title="Incertidumbre del prior en Black-Litterman" style="width:64px" /></span>
+          </div>
+          <div class="lab-status" id="lab-mu-hint"></div>
+        </div>
+
         <div class="metric-grid" id="lab-metrics-row"></div>
 
         <div class="lab-grid-wide">
@@ -2081,7 +2091,7 @@
               <button class="table-ctrl-btn" onclick="addLabCandidateAssets()" title="Agrega tickers al universo simulado">Agregar activo</button>
               <button class="table-ctrl-btn" onclick="clearLabCandidateAssets()" title="Quita los activos nuevos del escenario">Limpiar nuevos</button>
             </div>
-            <div class="lab-table-fit"><table class="lab-scenario-table"><thead><tr><th>Activo</th><th>Tipo</th><th>Peso actual</th><th>Peso simulado</th></tr></thead><tbody id="lab-scenario-body"></tbody></table></div>
+            <div class="lab-table-fit"><table class="lab-scenario-table"><thead><tr><th>Activo</th><th>Tipo</th><th>Peso actual</th><th>Peso simulado</th><th>Mi view</th></tr></thead><tbody id="lab-scenario-body"></tbody></table></div>
           </div>
 
           <div class="chart-card">
@@ -2333,15 +2343,23 @@ let labMarketData={},labScenario=[],labRange='2y',labRiskFreeRate=0.04,labLoadin
 let labConstraints={maxAsset:0.35,maxSingle:0.25,maxEtf:0.35,maxCrypto:0.10,maxTop3:0.75,maxHhi:0.35,minSingle:0};
 let labSelectedPortfolio='maxSharpeConstrained';
 let labLastAnalytics=null;
+let labMuMode='hist'; // 'hist' = historico simple (Markowitz clasico), 'bl' = Black-Litterman (equilibrio + views)
+let labTau=0.05; // incertidumbre del prior en Black-Litterman
+let labViews={}; // ticker -> {active,q,confidence}
 const LAB_CANDIDATE_STORE='finperso_lab_candidates_v1';
 const LAB_CONSTRAINTS_STORE='finperso_lab_constraints_v1';
 const LAB_SAVED_STORE='finperso_lab_saved_v1';
+const LAB_VIEWS_STORE='finperso_lab_views_v1';
+const LAB_MUMODE_STORE='finperso_lab_mumode_v1';
+const LAB_CONF_FACTOR={alta:6,media:1.5,baja:0.35};
 const LAB_SYMBOL_ALIASES={ADGO:'AGRO'};
 const LAB_MIN_OBS=80;
 const LAB_ETF_TICKERS=new Set(['SPY','VOO','VTI','QQQ','IWM','DIA','VEA','VWO','ACWI','URTH','EWY','EEM','IBIT','GLD','SLV','TLT','HYG','LQD']);
 let labCandidateAssets=[];
 try{labCandidateAssets=JSON.parse(localStorage.getItem(LAB_CANDIDATE_STORE)||'[]').filter(x=>x&&x.ticker);}catch(e){labCandidateAssets=[];}
 try{Object.assign(labConstraints,JSON.parse(localStorage.getItem(LAB_CONSTRAINTS_STORE)||'{}'));}catch(e){}
+try{labViews=JSON.parse(localStorage.getItem(LAB_VIEWS_STORE)||'{}')||{};}catch(e){labViews={};}
+try{labMuMode=localStorage.getItem(LAB_MUMODE_STORE)||'hist';}catch(e){labMuMode='hist';}
 let labSavedScenarios=[];
 try{labSavedScenarios=JSON.parse(localStorage.getItem(LAB_SAVED_STORE)||'[]').filter(x=>x&&x.id);}catch(e){labSavedScenarios=[];}
 let labSavedSelected=null;
@@ -3584,6 +3602,63 @@ function labCagrFromReturns(returns){
   const nav=returns.reduce((acc,r)=>acc*(1+r),1);
   return nav>0?Math.pow(nav,252/returns.length)-1:null;
 }
+function labTranspose(A){return A[0].map((_,j)=>A.map(row=>row[j]));}
+function labMatMul(A,B){const n=A.length,m=B[0].length,k=B.length;const out=Array.from({length:n},()=>Array(m).fill(0));for(let i=0;i<n;i++)for(let j=0;j<m;j++){let s=0;for(let t=0;t<k;t++)s+=A[i][t]*B[t][j];out[i][j]=s;}return out;}
+function labAddMat(A,B){return A.map((row,i)=>row.map((x,j)=>x+B[i][j]));}
+function labScaleMat(A,s){return A.map(row=>row.map(x=>x*s));}
+// Gauss-Jordan con pivoteo parcial: resuelve A x = b para A cuadrada
+function labSolveLinear(A,b){
+  const n=A.length;
+  const M=A.map((row,i)=>[...row,b[i]]);
+  for(let col=0;col<n;col++){
+    let piv=col;for(let r=col+1;r<n;r++)if(Math.abs(M[r][col])>Math.abs(M[piv][col]))piv=r;
+    [M[col],M[piv]]=[M[piv],M[col]];
+    let pv=M[col][col];if(Math.abs(pv)<1e-12)pv=1e-12;
+    for(let c=col;c<=n;c++)M[col][c]/=pv;
+    for(let r=0;r<n;r++){if(r===col)continue;const f=M[r][col];for(let c=col;c<=n;c++)M[r][c]-=f*M[col][c];}
+  }
+  return M.map(row=>row[n]);
+}
+function labInvertMatrix(A){const n=A.length,out=[];for(let i=0;i<n;i++){const e=Array(n).fill(0);e[i]=1;out.push(labSolveLinear(A,e));}return labTranspose(out);}
+// Shrinkage Ledoit-Wolf simplificado hacia varianza promedio (reduce ruido de la covarianza muestral con poca historia)
+function labLedoitWolfShrink(covM,nObs){
+  const n=covM.length;
+  const avgVar=covM.reduce((s,row,i)=>s+row[i],0)/n;
+  const alpha=Math.min(0.6,Math.max(0.1,n/Math.max(nObs,1)));
+  const shrunk=Array.from({length:n},(_,i)=>Array.from({length:n},(_,j)=>i===j?alpha*avgVar+(1-alpha)*covM[i][j]:(1-alpha)*covM[i][j]));
+  return {shrunk,alpha};
+}
+// Black-Litterman: pi = delta*Sigma*w (equilibrio implicito de los pesos actuales), mezclado con views activas.
+// delta se calibra con el Sharpe historico real del portfolio (no un valor de mercado fijo) para que el equilibrio
+// quede en una escala de retorno/riesgo consistente con lo que el portfolio efectivamente mostro.
+function labBlackLitterman(covM,w,histMu,tau,viewsActive,assets,rf){
+  const n=covM.length;
+  const portVar=labDot(w,labMatVec(covM,w));
+  const histPortRet=labDot(w,histMu);
+  const delta=Math.max(0.5,Math.min(6,(histPortRet-rf)/Math.max(portVar,1e-6)));
+  const pi=labMatVec(covM,w).map(x=>delta*x);
+  if(!viewsActive.length)return {mu:pi,pi,delta};
+  const k=viewsActive.length;
+  const P=Array.from({length:k},()=>Array(n).fill(0));
+  const Q=Array(k).fill(0);
+  const omegaDiag=Array(k).fill(0);
+  const tauSigma=labScaleMat(covM,tau);
+  viewsActive.forEach((v,row)=>{
+    const idx=assets.findIndex(a=>a.ticker===v.ticker);
+    if(idx<0)return;
+    P[row][idx]=1;
+    Q[row]=v.q;
+    const varView=labDot(P[row],labMatVec(tauSigma,P[row]));
+    omegaDiag[row]=varView/(LAB_CONF_FACTOR[v.confidence]||1.5);
+  });
+  const invTauSigma=labInvertMatrix(tauSigma);
+  const Pt=labTranspose(P);
+  const PtInvOmega=Pt.map(row=>row.map((_,c)=>row[c]/omegaDiag[c]));
+  const A=labAddMat(invTauSigma,labMatMul(PtInvOmega,P));
+  const bVec=labMatVec(invTauSigma,pi).map((x,i)=>x+labDot(PtInvOmega[i],Q));
+  const mu=labSolveLinear(A,bVec);
+  return {mu,pi,delta};
+}
 function labAnalytics(){
   const usable=labScenario.filter(s=>{const h=labMarketData[s.ticker];return h&&Array.isArray(h.data)&&h.data.length>=LAB_MIN_OBS;});
   if(usable.length<2)return null;
@@ -3608,11 +3683,19 @@ function labAnalytics(){
   }
   if(usedDates.length<80)return null;
   const n=maps.length;
-  const mu=rets.map(r=>labMean(r)*252);
-  const covM=Array.from({length:n},(_,i)=>Array.from({length:n},(_,j)=>labCov(rets[i],rets[j])*252));
+  const assets=maps.map(m=>m.asset);
+  const histMu=rets.map(r=>labMean(r)*252);
+  const covSample=Array.from({length:n},(_,i)=>Array.from({length:n},(_,j)=>labCov(rets[i],rets[j])*252));
   const normWeights=arr=>{const s=arr.reduce((a,b)=>a+b,0);return s>0?arr.map(v=>v/s):Array(n).fill(1/n);};
   const currentW=normWeights(maps.map(m=>m.asset.currentWeight));
   const simW=normWeights(maps.map(m=>m.asset.weight));
+  // Black-Litterman: equilibrio implicito de los pesos actuales + views activas, con covarianza shrinkeada.
+  // Markowitz clasico (modo 'hist') usa el promedio historico simple y la covarianza muestral cruda, como antes.
+  const activeViews=Object.keys(labViews).filter(t=>labViews[t]&&labViews[t].active&&assets.some(a=>a.ticker===t)).map(t=>({ticker:t,...labViews[t]}));
+  const {shrunk:covShrunk,alpha:shrinkAlpha}=labLedoitWolfShrink(covSample,usedDates.length);
+  const {mu:muBL,pi:piEquilibrium,delta:blDelta}=labBlackLitterman(covShrunk,currentW,histMu,labTau,activeViews,assets,labRiskFreeRate);
+  const mu=labMuMode==='bl'?muBL:histMu;
+  const covM=labMuMode==='bl'?covShrunk:covSample;
   const portReturns=w=>rets[0].map((_,t)=>w.reduce((sum,wi,i)=>sum+wi*rets[i][t],0));
   const addRealized=s=>{
     const daily=portReturns(s.w);
@@ -3627,7 +3710,6 @@ function labAnalytics(){
   let sim=labPortStats(simW,mu,covM);
   let equal=labPortStats(Array(n).fill(1/n),mu,covM);
   let minVol={vol:Infinity},maxSharpeConstrained={sharpe:-Infinity,realizedSharpe:-Infinity},points=[];
-  const assets=maps.map(m=>m.asset);
   const caps=labCaps(assets);
   const score=s=>isFinite(s.realizedSharpe)?s.realizedSharpe:s.sharpe;
   for(let i=0;i<6500;i++){
@@ -3661,7 +3743,7 @@ function labAnalytics(){
     const denom=labStd(rets[i])*labStd(rets[j]);
     return denom>0?labCov(rets[i],rets[j])/denom:0;
   }));
-  return {assets,dates:usedDates,rets,mu,covM,current,sim,equal,minVol,maxSharpe,maxSharpeConstrained,points,caps,currentDD,simDD,riskContrib,corr};
+  return {assets,dates:usedDates,rets,mu,covM,current,sim,equal,minVol,maxSharpe,maxSharpeConstrained,points,caps,currentDD,simDD,riskContrib,corr,histMu,muBL,piEquilibrium,blDelta,shrinkAlpha,activeViews,muMode:labMuMode};
 }
 function labAnalyticsIssue(){
   const loaded=labScenario.map(s=>({ticker:s.ticker,symbol:s.symbol,data:labMarketData[s.ticker]&&labMarketData[s.ticker].data||[]}));
@@ -3753,12 +3835,12 @@ function renderLabScenario(){
   buildLabScenario();
   const totalWeight=labScenario.reduce((a,s)=>a+s.weight,0);
   document.getElementById('lab-scenario-total').textContent='Simulado '+(totalWeight*100).toFixed(1)+'%';
-  if(!labScenario.length){tbody.innerHTML='<tr><td colspan="4" class="cell-muted" style="text-align:center;padding:24px">No hay activos invertibles para simular.</td></tr>';return;}
+  if(!labScenario.length){tbody.innerHTML='<tr><td colspan="5" class="cell-muted" style="text-align:center;padding:24px">No hay activos invertibles para simular.</td></tr>';return;}
   tbody.innerHTML=labScenario.map((s,i)=>{
     const kind=labTypeClass(s.tipo,s.ticker,s.name);
     const remove=s.isCandidate?`<button class="lab-remove-candidate" onclick="removeLabCandidateAsset('${labEsc(s.ticker)}')" title="Quitar del escenario" aria-label="Quitar ${labEsc(s.ticker)}"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>`:'';
     const tag=s.isCandidate?'<span class="lab-new-tag">Nuevo</span>':'';
-    return `<tr><td><div class="lab-asset-cell"><div class="lab-asset-main"><span class="ticker-name">${labEsc(s.name)}</span><span class="ticker-code">${labEsc(s.ticker)}</span>${tag}</div>${remove}</div></td><td><span class="lab-type-badge ${kind}">${labEsc(s.tipo)}</span></td><td class="mono">${(s.currentWeight*100).toFixed(1)}%</td><td><input class="lab-scenario-input" type="number" min="0" max="100" step="0.1" value="${(s.weight*100).toFixed(1)}" onchange="updateLabWeight(${i},this.value)" /></td></tr>`;
+    return `<tr><td><div class="lab-asset-cell"><div class="lab-asset-main"><span class="ticker-name">${labEsc(s.name)}</span><span class="ticker-code">${labEsc(s.ticker)}</span>${tag}</div>${remove}</div></td><td><span class="lab-type-badge ${kind}">${labEsc(s.tipo)}</span></td><td class="mono">${(s.currentWeight*100).toFixed(1)}%</td><td><input class="lab-scenario-input" type="number" min="0" max="100" step="0.1" value="${(s.weight*100).toFixed(1)}" onchange="updateLabWeight(${i},this.value)" /></td><td>${labViewCell(s.ticker)}</td></tr>`;
   }).join('');
 }
 function renderLabComments(a){
@@ -3916,6 +3998,9 @@ function renderPortfolioLab(){
   buildLabScenario();
   const a=labAnalytics();
   labLastAnalytics=a;
+  updateLabMuModeUI();
+  const hint=document.getElementById('lab-mu-hint');
+  if(hint)hint.textContent=a?(a.muMode==='bl'?`Equilibrio (δ=${a.blDelta.toFixed(2)}) + ${a.activeViews.length} view(s), cov. shrinkeada (α=${a.shrinkAlpha.toFixed(2)})`:'Promedio historico simple, covarianza muestral cruda'):'';
   renderLabMetrics(a);renderLabScenario();renderLabConstraints(a);renderLabSuggested(a);renderLabQuality(a);renderLabRiskContrib(a);renderLabCorr(a);renderLabAlts(a);drawLabScatter(a);drawLabDrawdown(a);renderLabComments(a);renderLabSaved();
   const needsData=labScenario.some(s=>!labMarketData[s.ticker]||!Array.isArray(labMarketData[s.ticker].data)||labMarketData[s.ticker].data.length<LAB_MIN_OBS);
   if(needsData&&!labLoading&&!labDataAttempted)loadLabMarketData();
@@ -3960,6 +4045,51 @@ function closeLabRangeMenu(){
 document.addEventListener('click',e=>{const wrap=document.getElementById('lab-range-wrap');if(wrap&&!wrap.contains(e.target))closeLabRangeMenu();});
 function setLabRange(v){labRange=v;updateLabRangeUI();closeLabRangeMenu();refreshPortfolioLab();}
 function setLabRiskFree(v){labRiskFreeRate=(labParseNumber(v)||0)/100;renderPortfolioLab();}
+function setLabMuMode(mode){
+  labMuMode=mode==='bl'?'bl':'hist';
+  try{localStorage.setItem(LAB_MUMODE_STORE,labMuMode);}catch(e){}
+  updateLabMuModeUI();
+  renderPortfolioLab();
+}
+function setLabTau(v){labTau=Math.max(0.005,Math.min(1,labParseNumber(v)||0.05));renderPortfolioLab();}
+function updateLabMuModeUI(){
+  const histBtn=document.getElementById('lab-mode-hist'),blBtn=document.getElementById('lab-mode-bl'),tauWrap=document.getElementById('lab-tau-wrap');
+  if(histBtn)histBtn.classList.toggle('active',labMuMode==='hist');
+  if(blBtn)blBtn.classList.toggle('active',labMuMode==='bl');
+  if(tauWrap)tauWrap.style.display=labMuMode==='bl'?'inline-flex':'none';
+}
+function labSaveViews(){try{localStorage.setItem(LAB_VIEWS_STORE,JSON.stringify(labViews));}catch(e){}}
+function labViewCell(ticker){
+  const v=labViews[ticker];
+  if(!v||!v.active)return `<button class="lab-remove-candidate" style="width:auto;height:26px;padding:0 8px;font-size:10px;font-family:'DM Mono',monospace;border-style:dashed" onclick="toggleLabView('${labEsc(ticker)}')" title="Agregar tu propio retorno esperado para este activo">+ view</button>`;
+  return `<div style="display:flex;gap:4px;align-items:center;justify-content:flex-end">
+    <input class="lab-scenario-input" style="width:58px" type="number" step="0.01" value="${v.q}" onchange="updateLabViewQ('${labEsc(ticker)}',this.value)" title="Retorno anual esperado, ej. 0.18 = 18%" />
+    <select class="lab-control" style="width:64px;height:26px;padding:2px 4px;font-size:10px" onchange="updateLabViewConfidence('${labEsc(ticker)}',this.value)">
+      <option value="alta" ${v.confidence==='alta'?'selected':''}>alta</option>
+      <option value="media" ${v.confidence==='media'?'selected':''}>media</option>
+      <option value="baja" ${v.confidence==='baja'?'selected':''}>baja</option>
+    </select>
+    <button class="lab-remove-candidate" style="width:22px;height:22px" onclick="toggleLabView('${labEsc(ticker)}')" title="Quitar view">×</button>
+  </div>`;
+}
+function toggleLabView(ticker){
+  if(!labViews[ticker])labViews[ticker]={active:true,q:0.15,confidence:'media'};
+  else labViews[ticker].active=!labViews[ticker].active;
+  labSaveViews();
+  renderPortfolioLab();
+}
+function updateLabViewQ(ticker,v){
+  if(!labViews[ticker])return;
+  labViews[ticker].q=labParseNumber(v)||0;
+  labSaveViews();
+  renderPortfolioLab();
+}
+function updateLabViewConfidence(ticker,v){
+  if(!labViews[ticker])return;
+  labViews[ticker].confidence=['alta','media','baja'].includes(v)?v:'media';
+  labSaveViews();
+  renderPortfolioLab();
+}
 function setLabConstraint(key,v){
   if(!(key in labConstraints))return;
   const n=labParseNumber(v)||0;
