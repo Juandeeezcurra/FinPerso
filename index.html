@@ -1187,11 +1187,19 @@
     padding-left: var(--space-3);
     padding-right: var(--space-3);
   }
-  .lab-scenario-table th:nth-child(1) { width: 28%; }
-  .lab-scenario-table th:nth-child(2) { width: 12%; }
-  .lab-scenario-table th:nth-child(3) { width: 16%; }
-  .lab-scenario-table th:nth-child(4) { width: 18%; }
-  .lab-scenario-table th:nth-child(5) { width: 26%; }
+  .lab-scenario-table th:nth-child(1) { width: 38%; }
+  .lab-scenario-table th:nth-child(2) { width: 16%; }
+  .lab-scenario-table th:nth-child(3) { width: 22%; }
+  .lab-scenario-table th:nth-child(4) { width: 24%; }
+  .lab-scenario-table th:nth-child(5),
+  .lab-scenario-table td:nth-child(5) { display: none; }
+  .lab-scenario-table.lab-mode-bl th:nth-child(1) { width: 28%; }
+  .lab-scenario-table.lab-mode-bl th:nth-child(2) { width: 12%; }
+  .lab-scenario-table.lab-mode-bl th:nth-child(3) { width: 16%; }
+  .lab-scenario-table.lab-mode-bl th:nth-child(4) { width: 18%; }
+  .lab-scenario-table.lab-mode-bl th:nth-child(5) { width: 26%; }
+  .lab-scenario-table.lab-mode-bl th:nth-child(5),
+  .lab-scenario-table.lab-mode-bl td:nth-child(5) { display: table-cell; }
   .lab-scenario-table th,
   .lab-scenario-table td {
     text-align: center;
@@ -3834,6 +3842,7 @@ function renderLabMetrics(a){
 function renderLabScenario(){
   const tbody=document.getElementById('lab-scenario-body');if(!tbody)return;
   buildLabScenario();
+  const table=tbody.closest('table');if(table)table.classList.toggle('lab-mode-bl',labMuMode==='bl');
   const totalWeight=labScenario.reduce((a,s)=>a+s.weight,0);
   document.getElementById('lab-scenario-total').textContent='Simulado '+(totalWeight*100).toFixed(1)+'%';
   if(!labScenario.length){tbody.innerHTML='<tr><td colspan="5" class="cell-muted" style="text-align:center;padding:24px">No hay activos invertibles para simular.</td></tr>';return;}
