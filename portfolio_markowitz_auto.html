@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Portfolio Markowitz / Black-Litterman - Juan</title>
+<style>
+:root{--bg:#0f1117;--panel:#151922;--panel2:#11161d;--text:#f4f7fb;--muted:#8b93a7;--line:#252b36;--green:#00d493;--red:#ff5b66;--blue:#4ea1ff;--yellow:#f3c969;--purple:#a78bfa}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial} .wrap{max-width:1320px;margin:0 auto;padding:24px} h1{font-size:24px;margin:0 0 6px} h2{font-size:16px;margin:0 0 14px}.sub{color:var(--muted);margin-bottom:20px}.grid{display:grid;gap:14px}.g4{grid-template-columns:repeat(4,1fr)}.g2{grid-template-columns:1fr 1fr}.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 10px 24px #0005}.metric .label{color:var(--muted);font-size:12px}.metric .val{font-size:24px;font-weight:750;margin-top:4px}.metric .hint{color:var(--muted);font-size:12px;margin-top:4px}.green{color:var(--green)}.red{color:var(--red)}.blue{color:var(--blue)}.yellow{color:var(--yellow)} table{width:100%;border-collapse:collapse} th,td{border-bottom:1px solid var(--line);padding:10px 8px;text-align:right;white-space:nowrap} th:first-child,td:first-child{text-align:left} th{color:var(--muted);font-size:12px;font-weight:650} td{font-variant-numeric:tabular-nums}.pill{display:inline-block;padding:3px 9px;border-radius:999px;background:#1c355b;color:#7db8ff;font-size:11px;font-weight:700}.bar{height:8px;background:#232a36;border-radius:999px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--blue)} .warn{border-color:#51401e;background:linear-gradient(180deg,#211b10,#15140f)} .bad{border-color:#55252a;background:linear-gradient(180deg,#241116,#161015)} .good{border-color:#1d4639;background:linear-gradient(180deg,#0f211d,#101714)} .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0 18px}.btn{background:#2b77ff;border:0;color:white;padding:10px 13px;border-radius:10px;font-weight:750;cursor:pointer}.btn.secondary{background:#242b38;color:#dce5f7;border:1px solid var(--line)} input,select{background:#0d1016;border:1px solid var(--line);border-radius:10px;color:var(--text);padding:9px;width:90px}.small{font-size:12px;color:var(--muted)} canvas{width:100%;height:330px;background:#0b0e13;border-radius:12px;border:1px solid var(--line)} .status{padding:10px 12px;border-radius:10px;background:#10151e;border:1px solid var(--line);color:var(--muted);margin:10px 0}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.foot{color:var(--muted);font-size:12px;margin-top:18px}.scroll{overflow:auto}.risklist{display:grid;gap:10px}.riskrow{display:grid;grid-template-columns:110px 1fr 60px;gap:10px;align-items:center}.src{font-size:11px;color:var(--muted)}.viewsrow{display:grid;grid-template-columns:110px 1fr 140px;gap:10px;align-items:center;margin-bottom:8px}.viewsrow select,.viewsrow input{width:100%}@media(max-width:900px){.g4,.g2{grid-template-columns:1fr}.wrap{padding:14px} canvas{height:260px} th,td{font-size:12px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Portfolio Analytics / Markowitz vs Black-Litterman</h1>
+  <div class="sub">Mismo portfolio y mismo optimizador (frontera eficiente). El toggle de abajo cambia de dónde vienen los retornos esperados y la covarianza: histórico simple (Markowitz clásico) o equilibrio + tus views con shrinkage Ledoit-Wolf (Black-Litterman).</div>
+
+  <div class="controls card">
+    <button class="btn" id="loadBtn">Actualizar datos históricos</button>
+    <button class="btn secondary" id="demoBtn">Usar simulación fallback</button>
+    <label class="small">Risk-free anual <input id="rf" type="number" step="0.1" value="4.5"> %</label>
+    <label class="small">Lookback <input id="years" type="number" step="1" value="3"> años</label>
+    <label class="small">Tau (incertidumbre prior) <input id="tau" type="number" step="0.005" value="0.05"></label>
+    <span class="small">Fuente: Stooq/Yahoo fallback. Si el navegador bloquea CORS, usá el fallback o abrilo desde un server local.</span>
+  </div>
+
+  <div class="controls card">
+    <span class="small" style="margin-right:4px"><b>Modo de retornos esperados:</b></span>
+    <label class="small"><input type="radio" name="muMode" value="hist" checked> Markowitz clásico (histórico simple)</label>
+    <label class="small"><input type="radio" name="muMode" value="bl"> Black-Litterman (equilibrio + views)</label>
+    <span class="small" id="modeHint" style="margin-left:6px"></span>
+  </div>
+
+  <div id="status" class="status">Listo para cargar.</div>
+
+  <div class="grid g4" id="metrics"></div>
+
+  <div class="grid g2" style="margin-top:14px">
+    <div class="card">
+      <h2>Pesos actuales</h2>
+      <div class="small" style="margin-bottom:8px">Tocá <span class="mono">+ view</span> en un activo para decirle al modelo tu propio retorno esperado en vez del histórico/equilibrio.</div>
+      <div class="scroll"><table id="holdings"></table></div>
+    </div>
+    <div class="card">
+      <h2>Contribución al riesgo</h2>
+      <div id="riskContrib" class="risklist"></div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="margin-top:14px">
+    <div class="card">
+      <h2>Frontera eficiente</h2>
+      <canvas id="frontier" width="900" height="420"></canvas>
+      <div class="src" id="frontierSrc">Puntos aleatorios long-only, sin shorting. Retornos esperados según el modo activo.</div>
+    </div>
+    <div class="card">
+      <h2>Drawdown del portfolio actual</h2>
+      <canvas id="dd" width="900" height="420"></canvas>
+      <div class="src">Portfolio re-balanceado diariamente a los pesos actuales.</div>
+    </div>
+  </div>
+
+  <div class="grid g2" style="margin-top:14px">
+    <div class="card">
+      <h2>Matriz de correlaciones</h2>
+      <div class="scroll"><table id="corr"></table></div>
+    </div>
+    <div class="card">
+      <h2>Comparación de portfolios</h2>
+      <div class="scroll"><table id="alts"></table></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h2>Histórico vs Black-Litterman</h2>
+    <div class="scroll"><table id="muCompare"></table></div>
+    <div class="small" style="margin-top:8px">El retorno histórico simple es ruidoso (cambia mucho al agregar/quitar años). El BL parte del equilibrio implícito de tus pesos actuales y solo se aleja donde pusiste una view.</div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h2>Lectura automática</h2>
+    <div id="diagnosis"></div>
+  </div>
+
+  <div class="foot">Tickers usados: MELI, NU, IBIT, META, EWY, AGRO. Adecoagro en NYSE es AGRO; si tu tenencia es CEDEAR ADGO, para riesgo económico en USD conviene usar AGRO.</div>
+</div>
+
+<script>
+const assets = [
+  {name:'MercadoLibre', local:'MELI', ticker:'MELI', stooq:'meli.us', value:13673, nominal:1.019, day:1.09, ret:-8.1, type:'EQUITY'},
+  {name:'Nubank', local:'NU', ticker:'NU', stooq:'nu.us', value:9953, nominal:1.562, day:-0.61, ret:-13.1, type:'EQUITY'},
+  {name:'Bitcoin ETF', local:'IBIT', ticker:'IBIT', stooq:'ibit.us', value:2061, nominal:578, day:-1.80, ret:-25.7, type:'CRYPTO'},
+  {name:'Meta', local:'META', ticker:'META', stooq:'meta.us', value:4026, nominal:169, day:1.22, ret:1.8, type:'EQUITY'},
+  {name:'iShares Korea', local:'EWY', ticker:'EWY', stooq:'ewy.us', value:1836, nominal:461, day:-9.32, ret:21.3, type:'EQUITY'},
+  {name:'Adecoagro', local:'ADGO', ticker:'AGRO', stooq:'agro.us', value:1642, nominal:176, day:1.42, ret:-30.7, type:'EQUITY'}
+];
+const total = assets.reduce((s,a)=>s+a.value,0); assets.forEach(a=>a.w=a.value/total);
+
+// Views iniciales: solo activás las que tengan checkbox marcado. q = retorno anual que VOS creés (no el equilibrio).
+const CONF_FACTOR = {alta:6, media:1.5, baja:0.35}; // mayor factor = view más fuerte (omega más chico)
+let views = [
+  {ticker:'MELI', active:false, q:0.18, confidence:'media'},
+  {ticker:'NU',   active:false, q:0.22, confidence:'media'},
+  {ticker:'IBIT', active:false, q:0.20, confidence:'baja'},
+  {ticker:'META', active:false, q:0.14, confidence:'baja'},
+  {ticker:'EWY',  active:false, q:0.10, confidence:'baja'},
+  {ticker:'AGRO', active:false, q:0.08, confidence:'baja'},
+];
+let muMode='hist'; // 'hist' = Markowitz clásico, 'bl' = Black-Litterman
+
+const fmtUSD=x=>'US$ '+Math.round(x).toLocaleString('en-US');
+const pct=x=>(x*100).toFixed(1)+'%';
+const avg=a=>a.reduce((s,x)=>s+x,0)/a.length;
+const stdev=a=>{let m=avg(a); return Math.sqrt(avg(a.map(x=>(x-m)**2)));};
+function cov(a,b){let ma=avg(a),mb=avg(b);let s=0;for(let i=0;i<a.length;i++)s+=(a[i]-ma)*(b[i]-mb);return s/(a.length-1)}
+function dot(a,b){return a.reduce((s,x,i)=>s+x*b[i],0)}
+function matVec(M,v){return M.map(r=>dot(r,v))}
+function matMul(A,B){let n=A.length,m=B[0].length,k=B.length;let out=Array.from({length:n},()=>Array(m).fill(0));for(let i=0;i<n;i++)for(let j=0;j<m;j++){let s=0;for(let t=0;t<k;t++)s+=A[i][t]*B[t][j];out[i][j]=s}return out}
+function transpose(A){return A[0].map((_,j)=>A.map(row=>row[j]))}
+function addMat(A,B){return A.map((row,i)=>row.map((x,j)=>x+B[i][j]))}
+function scaleMat(A,s){return A.map(row=>row.map(x=>x*s))}
+// Gauss-Jordan: resuelve A x = b para A cuadrada (n x n), b vector (n)
+function solveLinear(A,b){
+  let n=A.length;
+  let M=A.map((row,i)=>[...row,b[i]]);
+  for(let col=0;col<n;col++){
+    let piv=col; for(let r=col+1;r<n;r++) if(Math.abs(M[r][col])>Math.abs(M[piv][col])) piv=r;
+    [M[col],M[piv]]=[M[piv],M[col]];
+    let pv=M[col][col]; if(Math.abs(pv)<1e-12) pv=1e-12;
+    for(let c=col;c<=n;c++) M[col][c]/=pv;
+    for(let r=0;r<n;r++){ if(r===col) continue; let f=M[r][col]; for(let c=col;c<=n;c++) M[r][c]-=f*M[col][c]; }
+  }
+  return M.map(row=>row[n]);
+}
+function invertMatrix(A){
+  let n=A.length, out=[];
+  for(let i=0;i<n;i++){ let e=Array(n).fill(0); e[i]=1; out.push(solveLinear(A,e)); }
+  return transpose(out);
+}
+// Shrinkage Ledoit-Wolf simplificado: target = matriz diagonal con varianzas promedio (constant correlation simplificado a identidad escalada)
+function ledoitWolfShrink(covM, nObs){
+  let n=covM.length;
+  let avgVar = covM.reduce((s,row,i)=>s+row[i],0)/n;
+  let target = Array.from({length:n},(_,i)=>Array.from({length:n},(_,j)=>i===j?avgVar:0));
+  // intensidad de shrinkage: más fuerte con pocas observaciones, entre 0.1 y 0.6
+  let alpha = Math.min(0.6, Math.max(0.1, n/Math.max(nObs,1)));
+  let shrunk = Array.from({length:n},(_,i)=>Array.from({length:n},(_,j)=>alpha*target[i][j]+(1-alpha)*covM[i][j]));
+  return {shrunk, alpha};
+}
+// Black-Litterman: pi = delta*Sigma*w (equilibrio implícito de tus pesos actuales); mezcla con views activas
+// delta (aversión al riesgo) se calibra con el propio Sharpe histórico del portfolio en vez de un valor de mercado fijo,
+// porque no tenemos un índice de referencia real: así el equilibrio queda en una escala de retorno/riesgo consistente
+// con lo que el portfolio efectivamente mostró, en vez de uno arbitrario que puede quedar por debajo de la tasa libre de riesgo.
+function blackLitterman(covM, w, histMu, tau, viewsActive, rf){
+  let n=covM.length;
+  let portVar = dot(w, matVec(covM,w));
+  let histPortRet = dot(w, histMu);
+  let delta = Math.max(0.5, Math.min(6, (histPortRet - rf) / Math.max(portVar, 1e-6)));
+  let pi = matVec(covM, w).map(x=>delta*x);
+  if(viewsActive.length===0) return {mu: pi, pi, delta};
+  let k = viewsActive.length;
+  let P = Array.from({length:k},()=>Array(n).fill(0));
+  let Q = Array(k).fill(0);
+  let omegaDiag = Array(k).fill(0);
+  let tauSigma = scaleMat(covM, tau);
+  viewsActive.forEach((v,row)=>{
+    let idx = assets.findIndex(a=>a.ticker===v.ticker);
+    P[row][idx] = 1;
+    Q[row] = v.q;
+    let pRow = P[row];
+    let varView = dot(pRow, matVec(tauSigma, pRow));
+    omegaDiag[row] = varView / CONF_FACTOR[v.confidence];
+  });
+  let invTauSigma = invertMatrix(tauSigma);
+  let Pt = transpose(P);
+  // A = invTauSigma + P' * invOmega * P   (invOmega diagonal: 1/omegaDiag)
+  let PtInvOmega = Pt.map(row=>row.map((_,c)=>row[c]/omegaDiag[c])); // Pt is n x k, divide each column c by omega[c]
+  let A = addMat(invTauSigma, matMul(PtInvOmega, P));
+  let bVec = matVec(invTauSigma, pi).map((x,i)=>x + dot(PtInvOmega[i], Q));
+  let mu = solveLinear(A, bVec);
+  return {mu, pi, delta};
+}
+function portStats(w,mu,covM,rf){let r=dot(w,mu), v=Math.sqrt(dot(w,matVec(covM,w))); return {ret:r,vol:v,sharpe:(r-rf)/v}}
+function maxDrawdown(rets){let nav=1,peak=1,mdd=0,series=[]; for(const r of rets){nav*=1+r; peak=Math.max(peak,nav); let d=nav/peak-1; mdd=Math.min(mdd,d); series.push(d)} return {mdd,series}}
+function renderHoldings(){
+  let rows='<tr><th>Activo</th><th>Tipo</th><th>USD</th><th>Peso</th><th>Rend USD</th><th>Var día</th><th>Mi view</th></tr>';
+  assets.forEach((a)=>{
+    let vIdx=views.findIndex(v=>v.ticker===a.ticker);
+    let v=views[vIdx];
+    rows+=`<tr><td><b>${a.name}</b><br><span class="small mono">${a.local} / ${a.ticker}</span></td><td><span class="pill">${a.type}</span></td><td>${fmtUSD(a.value)}</td><td>${pct(a.w)}</td><td class="${a.ret>=0?'green':'red'}">${a.ret.toFixed(1)}%</td><td class="${a.day>=0?'green':'red'}">${a.day.toFixed(2)}%</td><td>${viewCell(v,vIdx)}</td></tr>`;
+  });
+  document.getElementById('holdings').innerHTML=rows;
+  document.querySelectorAll('.vToggle').forEach(el=>el.onclick=e=>{let i=+e.target.dataset.idx; views[i].active=!views[i].active; renderHoldings(); if(lastPriceArrays) run(lastPriceArrays,lastSourceNote);});
+  document.querySelectorAll('.vQ').forEach(el=>el.onchange=e=>{views[+e.target.dataset.idx].q=parseFloat(e.target.value)||0; if(lastPriceArrays) run(lastPriceArrays,lastSourceNote);});
+  document.querySelectorAll('.vConf').forEach(el=>el.onchange=e=>{views[+e.target.dataset.idx].confidence=e.target.value; if(lastPriceArrays) run(lastPriceArrays,lastSourceNote);});
+}
+function viewCell(v,i){
+  if(!v.active) return `<button class="vToggle" data-idx="${i}" style="background:none;border:1px dashed var(--line);color:var(--muted);border-radius:8px;padding:4px 8px;cursor:pointer;font-size:11px">+ view</button>`;
+  return `<div style="display:flex;gap:4px;align-items:center;justify-content:flex-end">
+    <input class="vQ mono" data-idx="${i}" type="number" step="0.01" value="${v.q}" style="width:62px;padding:4px 6px;font-size:12px">
+    <select class="vConf" data-idx="${i}" style="width:78px;padding:4px;font-size:11px">
+      <option value="alta" ${v.confidence==='alta'?'selected':''}>alta</option>
+      <option value="media" ${v.confidence==='media'?'selected':''}>media</option>
+      <option value="baja" ${v.confidence==='baja'?'selected':''}>baja</option>
+    </select>
+    <button class="vToggle" data-idx="${i}" style="background:none;border:0;color:var(--muted);cursor:pointer;font-size:14px" title="Quitar view">×</button>
+  </div>`;
+}
+function metric(label,val,hint,cls=''){return `<div class="card metric ${cls}"><div class="label">${label}</div><div class="val">${val}</div><div class="hint">${hint||''}</div></div>`}
+function drawScatter(id, points, special){const c=document.getElementById(id),ctx=c.getContext('2d'),W=c.width,H=c.height;ctx.clearRect(0,0,W,H);ctx.fillStyle='#0b0e13';ctx.fillRect(0,0,W,H);if(!points.length)return;let xs=points.map(p=>p.vol),ys=points.map(p=>p.ret);special.forEach(p=>{xs.push(p.vol);ys.push(p.ret)});let xmin=Math.min(...xs)*.9,xmax=Math.max(...xs)*1.1,ymin=Math.min(...ys)*1.1,ymax=Math.max(...ys)*1.1; if(ymin>0)ymin=0; const X=x=>55+(x-xmin)/(xmax-xmin)*(W-80), Y=y=>H-45-(y-ymin)/(ymax-ymin)*(H-70); ctx.strokeStyle='#252b36';ctx.lineWidth=1; for(let i=0;i<5;i++){let y=35+i*(H-80)/4;ctx.beginPath();ctx.moveTo(50,y);ctx.lineTo(W-25,y);ctx.stroke();let x=55+i*(W-80)/4;ctx.beginPath();ctx.moveTo(x,25);ctx.lineTo(x,H-45);ctx.stroke()} ctx.fillStyle='#8b93a7';ctx.font='13px system-ui';ctx.fillText('Volatilidad anual',W/2-60,H-12);ctx.save();ctx.translate(14,H/2+50);ctx.rotate(-Math.PI/2);ctx.fillText('Retorno anual esperado',0,0);ctx.restore(); ctx.fillStyle='rgba(78,161,255,.28)';points.forEach(p=>{ctx.beginPath();ctx.arc(X(p.vol),Y(p.ret),2,0,7);ctx.fill()}); special.forEach(p=>{ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(X(p.vol),Y(p.ret),7,0,7);ctx.fill();ctx.fillStyle='#f4f7fb';ctx.fillText(p.label,X(p.vol)+9,Y(p.ret)-8)});}
+function drawLine(id, series){const c=document.getElementById(id),ctx=c.getContext('2d'),W=c.width,H=c.height;ctx.clearRect(0,0,W,H);ctx.fillStyle='#0b0e13';ctx.fillRect(0,0,W,H);if(!series.length)return;let ymin=Math.min(...series),ymax=0; const X=i=>50+i/(series.length-1)*(W-75),Y=y=>H-45-(y-ymin)/(ymax-ymin)*(H-75); ctx.strokeStyle='#252b36';for(let i=0;i<5;i++){let y=30+i*(H-75)/4;ctx.beginPath();ctx.moveTo(50,y);ctx.lineTo(W-25,y);ctx.stroke()} ctx.strokeStyle='#ff5b66';ctx.lineWidth=2;ctx.beginPath();series.forEach((y,i)=>{let x=X(i),yy=Y(y); if(i)ctx.lineTo(x,yy);else ctx.moveTo(x,yy)});ctx.stroke();ctx.fillStyle='#8b93a7';ctx.font='13px system-ui';ctx.fillText('Drawdown máximo: '+pct(ymin),55,22)}
+async function fetchText(url){let r=await fetch(url); if(!r.ok) throw new Error(r.status+' '+url); return await r.text()}
+async function getYahoo(ticker,years){let url=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=${years}y&interval=1d&events=history`;let j=await (await fetch(url)).json();let res=j.chart.result[0];let ts=res.timestamp, q=res.indicators.quote[0], adj=(res.indicators.adjclose&&res.indicators.adjclose[0].adjclose)||q.close;let out=[];for(let i=0;i<ts.length;i++){if(adj[i]) out.push({date:new Date(ts[i]*1000).toISOString().slice(0,10), close:adj[i]})}return out}
+async function getStooq(sym,years){let d2=new Date(), d1=new Date(); d1.setFullYear(d2.getFullYear()-years); let fmt=d=>d.toISOString().slice(0,10).replaceAll('-',''); let url=`https://stooq.com/q/d/l/?s=${sym}&d1=${fmt(d1)}&d2=${fmt(d2)}&i=d`;let txt=await fetchText(url); if(!txt.includes('Date,')) throw new Error('Sin CSV'); return parseCSV(txt)}
+function parseCSV(txt){let lines=txt.trim().split(/\r?\n/), head=lines[0].split(','); let di=head.indexOf('Date'), ci=head.indexOf('Close'); let out=[]; for(let i=1;i<lines.length;i++){let p=lines[i].split(','); let c=parseFloat(p[ci]); if(p[di]&&isFinite(c)) out.push({date:p[di],close:c})} return out}
+async function getPrices(a,years){try{return await getStooq(a.stooq,years)}catch(e){return await getYahoo(a.ticker,years)}}
+function demoPrices(years){let days=Math.round(252*years);let vols=[.42,.50,.68,.34,.28,.38], mus=[.16,.20,.22,.14,.08,.10];return assets.map((a,k)=>{let arr=[],p=100;for(let i=0;i<days;i++){let common=(Math.random()-.5)*.012;let r=mus[k]/252+vols[k]/Math.sqrt(252)*(Math.random()-.5)*1.65+common;p*=1+r;let d=new Date();d.setDate(d.getDate()-days+i);arr.push({date:d.toISOString().slice(0,10),close:p})}return arr})}
+function alignReturns(priceArrays){let maps=priceArrays.map(arr=>new Map(arr.map(x=>[x.date,x.close])));let dates=[...maps[0].keys()].filter(d=>maps.every(m=>m.has(d))).sort();let rets=assets.map(()=>[]), used=[];for(let i=1;i<dates.length;i++){let ok=true, r=[];for(let k=0;k<maps.length;k++){let p0=maps[k].get(dates[i-1]),p1=maps[k].get(dates[i]);let rr=p1/p0-1;if(!isFinite(rr)||Math.abs(rr)>.6)ok=false;r.push(rr)}if(ok){used.push(dates[i]);for(let k=0;k<r.length;k++)rets[k].push(r[k])}}return {dates:used,rets}}
+function randomWeights(n){let x=Array.from({length:n},()=>-Math.log(Math.random()));let s=x.reduce((a,b)=>a+b,0);return x.map(v=>v/s)}
+let lastPriceArrays=null, lastSourceNote='';
+function run(priceArrays, sourceNote){
+  lastPriceArrays=priceArrays; lastSourceNote=sourceNote;
+  let rf=parseFloat(document.getElementById('rf').value)/100;
+  let tau=parseFloat(document.getElementById('tau').value)||0.05;
+  let {dates,rets}=alignReturns(priceArrays); if(dates.length<80){document.getElementById('status').textContent='No hay suficientes datos alineados.';return}
+  let n=assets.length, ann=252;
+  let histMu=rets.map(r=>avg(r)*ann);
+  let covSample=Array.from({length:n},(_,i)=>Array.from({length:n},(_,j)=>cov(rets[i],rets[j])*ann));
+  let {shrunk:covShrunk, alpha} = ledoitWolfShrink(covSample, dates.length);
+  let w=assets.map(a=>a.w);
+  let activeViews = views.filter(v=>v.active);
+  let {mu:muBL, pi, delta} = blackLitterman(covShrunk, w, histMu, tau, activeViews, rf);
+
+  // Modo activo: Markowitz clásico = histórico + covarianza muestral cruda. BL = equilibrio/views + covarianza shrinkeada.
+  let muActive = muMode==='bl' ? muBL : histMu;
+  let covActive = muMode==='bl' ? covShrunk : covSample;
+
+  let ps=portStats(w,muActive,covActive,rf);
+  let psHist=portStats(w,histMu,covSample,rf);
+  let psBL=portStats(w,muBL,covShrunk,rf);
+  let portDaily=rets[0].map((_,t)=>assets.reduce((s,a,i)=>s+a.w*rets[i][t],0));
+  let dd=maxDrawdown(portDaily);
+  let hhi=assets.reduce((s,a)=>s+a.w*a.w,0);
+  let top2=assets.map(a=>a.w).sort((a,b)=>b-a).slice(0,2).reduce((s,x)=>s+x,0);
+  let cost=assets.reduce((s,a)=>s+a.value/(1+a.ret/100),0); let pl=(total/cost-1);
+  let mv={vol:999}, ms={sharpe:-999}, pts=[]; for(let i=0;i<22000;i++){let rw=randomWeights(n);let s=portStats(rw,muActive,covActive,rf);s.w=rw;pts.push(s);if(s.vol<mv.vol)mv=s;if(s.sharpe>ms.sharpe)ms=s}
+  let equal=portStats(Array(n).fill(1/n),muActive,covActive,rf);
+  let actual={...ps,label:'Actual',color:'#f3c969'}, minv={...mv,label:'Min Vol',color:'#00d493'}, maxs={...ms,label:'Max Sharpe',color:'#a78bfa'};
+  let rc=matVec(covActive,w).map((x,i)=>w[i]*x/(ps.vol**2));
+  renderMetrics(ps,psHist,psBL,dd,top2,hhi,pl,dates,sourceNote,alpha); renderRisk(rc); renderCorr(rets);
+  renderAlts([{name:'Actual',s:ps,w},{name:'Equal weight',s:equal,w:Array(n).fill(1/n)},{name:'Min vol',s:mv,w:mv.w},{name:'Max Sharpe',s:ms,w:ms.w}]);
+  renderMuCompare(histMu, pi, muBL, activeViews);
+  drawScatter('frontier',pts,[actual,minv,maxs]); drawLine('dd',dd.series); diagnose(ps,dd,top2,hhi,rc,ms,mv);
+  document.getElementById('modeHint').textContent = muMode==='bl' ? `Usando equilibrio (δ=${delta.toFixed(2)}) + ${activeViews.length} view(s), covarianza shrinkeada (α=${alpha.toFixed(2)}).` : 'Usando promedio histórico simple y covarianza muestral cruda (Markowitz clásico).';
+  document.getElementById('frontierSrc').textContent = `Puntos aleatorios long-only, sin shorting. Retornos esperados = ${muMode==='bl'?'Black-Litterman (equilibrio + views)':'histórico simple (Markowitz clásico)'}.`;
+}
+function renderMetrics(ps,psHist,psBL,dd,top2,hhi,pl,dates,source,alpha){document.getElementById('metrics').innerHTML=
+  metric('Valor actual',fmtUSD(total),'Foto de tu captura')+
+  metric('Retorno esperado (modo activo)',pct(ps.ret),muMode==='bl'?'Black-Litterman':'Markowitz clásico',ps.ret<0?'bad':'good')+
+  metric('Retorno histórico simple',pct(psHist.ret),'Markowitz clásico, ruidoso',muMode==='hist'?'good':'warn')+
+  metric('Retorno Black-Litterman',pct(psBL.ret),'Equilibrio + tus views',muMode==='bl'?'good':'warn')+
+  metric('Volatilidad anual',pct(ps.vol),muMode==='bl'?`Cov. shrinkeada α=${alpha.toFixed(2)}`:'Cov. muestral cruda',ps.vol>.35?'bad':'warn')+
+  metric('Sharpe (modo activo)',ps.sharpe.toFixed(2),'Exceso retorno / vol',ps.sharpe<.5?'bad':ps.sharpe>1?'good':'warn')+
+  metric('Max drawdown',pct(dd.mdd),'Caída pico-valle',dd.mdd<-.35?'bad':'warn')+
+  metric('Top 2 holdings',pct(top2),'MELI + NU',top2>.6?'bad':'warn')+
+  metric('HHI concentración',hhi.toFixed(2),'Mayor = menos diversificación',hhi>.25?'bad':'warn')+
+  metric('P&L USD actual',pct(pl),'Según Rend USD de la captura',pl<0?'bad':'good');
+  document.getElementById('status').innerHTML=`Datos procesados: <b>${dates.length}</b> ruedas, ${dates[0]} a ${dates[dates.length-1]}. ${source}`}
+function renderRisk(rc){let max=Math.max(...rc.map(Math.abs));document.getElementById('riskContrib').innerHTML=rc.map((x,i)=>`<div class="riskrow"><b>${assets[i].local}</b><div class="bar"><i style="width:${Math.max(0,100*x/max)}%"></i></div><span class="${x<0?'green':''}">${pct(x)}</span></div>`).join('')}
+function renderCorr(rets){let n=assets.length;let h='<tr><th></th>'+assets.map(a=>`<th>${a.local}</th>`).join('')+'</tr>';for(let i=0;i<n;i++){h+=`<tr><td><b>${assets[i].local}</b></td>`;for(let j=0;j<n;j++){let c=cov(rets[i],rets[j])/(stdev(rets[i])*stdev(rets[j]));h+=`<td>${c.toFixed(2)}</td>`}h+='</tr>'}document.getElementById('corr').innerHTML=h}
+function renderAlts(rows){let h='<tr><th>Portfolio</th><th>Ret anual</th><th>Vol anual</th><th>Sharpe</th><th>Principal peso</th></tr>';rows.forEach(r=>{let idx=r.w.indexOf(Math.max(...r.w));h+=`<tr><td><b>${r.name}</b></td><td>${pct(r.s.ret)}</td><td>${pct(r.s.vol)}</td><td>${r.s.sharpe.toFixed(2)}</td><td>${assets[idx].local} ${pct(r.w[idx])}</td></tr>`});document.getElementById('alts').innerHTML=h}
+function renderMuCompare(histMu, pi, muBL, activeViews){
+  let activeTickers = new Set(activeViews.map(v=>v.ticker));
+  let h='<tr><th>Activo</th><th>Histórico simple</th><th>Equilibrio (sin views)</th><th>Black-Litterman final</th><th>View propia</th></tr>';
+  assets.forEach((a,i)=>{
+    let v = views.find(v=>v.ticker===a.ticker);
+    h+=`<tr><td><b>${a.local}</b></td><td>${pct(histMu[i])}</td><td>${pct(pi[i])}</td><td class="${activeTickers.has(a.ticker)?'good':''}">${pct(muBL[i])}</td><td>${activeTickers.has(a.ticker)?pct(v.q)+' ('+v.confidence+')':'—'}</td></tr>`;
+  });
+  document.getElementById('muCompare').innerHTML=h;
+}
+function diagnose(ps,dd,top2,hhi,rc,ms,mv){let biggest=assets[rc.indexOf(Math.max(...rc))];let lines=[];lines.push(`La concentración manda: los dos primeros activos pesan ${pct(top2)}. Aunque el portfolio tenga 6 posiciones, no se comporta como 6 apuestas independientes.`);lines.push(`El activo que más explica el riesgo es <b>${biggest.name}</b>. Mirá contribución al riesgo, no solo peso.`); if(ps.sharpe<0.5) lines.push(`Sharpe débil: con estos retornos esperados el retorno no compensa bien la volatilidad. No significa vender, pero sí que el sizing actual necesita justificación fuerte.`); else lines.push(`Sharpe razonable: el problema principal no parece retorno/riesgo agregado sino concentración.`); if(dd.mdd<-0.35) lines.push(`Drawdown alto: tenés que tolerar caídas de ${pct(dd.mdd)} en una versión re-balanceada del portfolio. Si eso te fuerza a vender, el portfolio está mal diseñado para vos.`); lines.push(`La frontera eficiente no predice el futuro. Sirve para detectar si tu portfolio actual está dominado por combinaciones mejores en riesgo/retorno dado lo que vos creés (BL) y el riesgo histórico shrinkeado.`);document.getElementById('diagnosis').innerHTML=lines.map(x=>`<p>${x}</p>`).join('')}
+async function loadLive(){document.getElementById('status').textContent='Descargando precios históricos...';let years=parseInt(document.getElementById('years').value||3);try{let arrays=[];for(const a of assets){document.getElementById('status').textContent='Descargando '+a.ticker+'...';arrays.push(await getPrices(a,years));}run(arrays,'Fuente: descarga automática Stooq/Yahoo.');}catch(e){document.getElementById('status').innerHTML='Falló descarga automática: '+e.message+'. Probá fallback o abrilo desde servidor local.';}}
+function runDemo(){let years=parseInt(document.getElementById('years').value||3);run(demoPrices(years),'Fuente: simulación fallback, no usar para decidir.');}
+document.getElementById('loadBtn').onclick=loadLive;
+document.getElementById('demoBtn').onclick=runDemo;
+document.querySelectorAll('input[name="muMode"]').forEach(el=>el.onchange=e=>{ muMode=e.target.value; if(lastPriceArrays) run(lastPriceArrays,lastSourceNote); });
+renderHoldings();
+document.getElementById('metrics').innerHTML=metric('Valor actual',fmtUSD(total),'Foto de tu captura')+metric('Pendiente','Actualizar','Descarga históricos para calcular Black-Litterman')+metric('Top 2 holdings',pct(assets[0].w+assets[1].w),'MELI + NU','bad')+metric('HHI concentración',assets.reduce((s,a)=>s+a.w*a.w,0).toFixed(2),'Concentración actual','warn');
+</script>
+</body>
+</html>
