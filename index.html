@@ -2122,7 +2122,7 @@
         <div class="lab-grid">
           <div class="chart-card">
             <div class="chart-title">Frontera eficiente</div>
-            <div class="chart-sub">Puntos long-only con restricciones; retornos historicos</div>
+            <div class="chart-sub" id="lab-frontier-sub">Puntos long-only con restricciones; retornos historicos</div>
             <canvas class="lab-canvas" id="lab-frontier" width="900" height="420"></canvas>
             <div class="lab-legend"><span><i class="lab-legend-dot" style="background:#fb7185"></i>Actual</span><span><i class="lab-legend-dot" style="background:#f97316"></i>Simulado</span><span><i class="lab-legend-dot" style="background:#4ade80"></i>Min vol restr.</span><span><i class="lab-legend-dot" style="background:#a78bfa"></i>Max Sharpe restr.</span></div>
           </div>
@@ -3777,8 +3777,12 @@ function labSetCanvasSize(canvas){
 function drawLabScatter(analytics){
   const c=document.getElementById('lab-frontier');if(!c)return;
   const {ctx,W,H}=labSetCanvasSize(c);ctx.clearRect(0,0,W,H);ctx.fillStyle='rgba(0,0,0,0.10)';ctx.fillRect(0,0,W,H);
+  const sub=document.getElementById('lab-frontier-sub');
+  if(sub)sub.textContent=analytics&&analytics.muMode==='bl'?'Puntos long-only con restricciones; retorno esperado (equilibrio + views)':'Puntos long-only con restricciones; retornos historicos';
   if(!analytics){ctx.fillStyle='#888';ctx.font='14px sans-serif';ctx.fillText(labAnalyticsIssue(),24,32);return;}
-  const yRet=p=>isFinite(p.cagr)?p.cagr:p.ret;
+  // El eje Y tiene que medir lo mismo que se uso para elegir "Sharpe restr.", si no el punto optimo
+  // no cae sobre el borde visual de la nube. En BL se rankea por retorno del modelo (mu); en historico, por CAGR realizado.
+  const yRet=analytics.muMode==='bl'?(p=>isFinite(p.ret)?p.ret:p.cagr):(p=>isFinite(p.cagr)?p.cagr:p.ret);
   const special=[{...analytics.current,label:'Actual',color:'#fb7185'},{...analytics.sim,label:'Sim',color:'#f97316'},{...analytics.minVol,label:'Min Vol restr.',color:'#4ade80'},{...analytics.maxSharpeConstrained,label:'Sharpe restr.',color:'#a78bfa'}].filter(p=>p&&isFinite(p.vol)&&isFinite(yRet(p)));
   const xs=analytics.points.map(p=>p.vol).concat(special.map(p=>p.vol)),ys=analytics.points.map(yRet).concat(special.map(yRet));
   const xMinRaw=Math.min(...xs),xMaxRaw=Math.max(...xs),xPad=Math.max(0.015,(xMaxRaw-xMinRaw)*0.22);
@@ -3812,7 +3816,7 @@ function drawLabScatter(analytics){
   }
   ctx.fillStyle='rgba(96,165,250,0.22)';analytics.points.forEach(p=>{ctx.beginPath();ctx.arc(X(p.vol),Y(yRet(p)),2,0,Math.PI*2);ctx.fill();});
   special.forEach(p=>{const primary=p.label==='Actual'||p.label==='Sim'||p.label==='Sharpe restr.',r=primary?9:6;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(X(p.vol),Y(yRet(p)),r,0,Math.PI*2);ctx.fill();if(primary){ctx.strokeStyle='rgba(255,255,255,0.72)';ctx.lineWidth=2;ctx.stroke();}ctx.fillStyle='#e5e7eb';ctx.font=primary?'14px sans-serif':'12px sans-serif';ctx.textAlign='left';ctx.fillText(p.label,X(p.vol)+12,Y(yRet(p))-9);});
-  ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('Volatilidad anual',W/2,H-8);ctx.save();ctx.translate(16,H/2+50);ctx.rotate(-Math.PI/2);ctx.fillText('CAGR historico anual',0,0);ctx.restore();ctx.textAlign='left';
+  ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('Volatilidad anual',W/2,H-8);ctx.save();ctx.translate(16,H/2+50);ctx.rotate(-Math.PI/2);ctx.fillText(analytics.muMode==='bl'?'Retorno esperado (BL)':'CAGR historico anual',0,0);ctx.restore();ctx.textAlign='left';
 }
 function drawLabDrawdown(analytics){
   const c=document.getElementById('lab-drawdown');if(!c)return;
