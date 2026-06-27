@@ -909,6 +909,9 @@
   }
   #lab-metrics-row .metric-body {
     padding-left: 0;
+  }
+  #lab-metrics-row .metric-body {
+    padding-left: 0;
     margin-top: auto;
   }
   #lab-metrics-row .metric-value {
@@ -2059,19 +2062,19 @@
           <div class="lab-toolbar-group">
             <span class="lab-status">Lookback</span>
             <div class="lab-select-wrap" id="lab-range-wrap">
-              <button class="lab-select-btn" type="button" onclick="toggleLabRangeMenu()" aria-label="Seleccionar lookback"><span id="lab-range-label">2Y</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+              <button class="lab-select-btn" type="button" onclick="toggleLabRangeMenu()" aria-label="Seleccionar lookback"><span id="lab-range-label">5Y</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
               <div class="lab-select-menu" id="lab-range-menu">
                 <button class="lab-select-option" type="button" data-value="6mo" onclick="setLabRange('6mo')">6M</button>
                 <button class="lab-select-option" type="button" data-value="1y" onclick="setLabRange('1y')">1Y</button>
-                <button class="lab-select-option active" type="button" data-value="2y" onclick="setLabRange('2y')">2Y</button>
-                <button class="lab-select-option" type="button" data-value="5y" onclick="setLabRange('5y')">5Y</button>
+                <button class="lab-select-option" type="button" data-value="2y" onclick="setLabRange('2y')">2Y</button>
+                <button class="lab-select-option active" type="button" data-value="5y" onclick="setLabRange('5y')">5Y</button>
               </div>
             </div>
             <span class="lab-status">Risk-free anual</span>
             <input class="lab-control" id="lab-rf" type="number" min="0" max="100" step="0.1" value="4" onchange="setLabRiskFree(this.value)" title="Risk-free anual (%)" />
+            <span class="lab-status" id="lab-tau-wrap" style="display:none">Tau</span>
+            <input class="lab-control" id="lab-tau" style="display:none" type="number" min="0.005" max="1" step="0.005" value="0.05" onchange="setLabTau(this.value)" title="Incertidumbre del prior en Black-Litterman" />
             <button class="table-ctrl-btn" onclick="refreshPortfolioLab()" title="Vuelve a descargar series historicas desde Yahoo via Apps Script">Recargar precios</button>
-            <button class="table-ctrl-btn" onclick="resetLabScenario()" title="Vuelve los pesos simulados a los pesos actuales">Restaurar pesos</button>
-            <button class="table-ctrl-btn" onclick="normalizeLabScenario()" title="Reescala los pesos simulados para que sumen exactamente 100%">Reescalar a 100%</button>
             <button class="table-ctrl-btn" onclick="saveLabScenario()" title="Guarda los pesos y restricciones actuales para volver a verlos despues">Guardar escenario</button>
           </div>
           <div class="lab-status" id="lab-status">Listo</div>
@@ -2082,9 +2085,7 @@
             <span class="lab-status">Retornos esperados</span>
             <button class="table-ctrl-btn" id="lab-mode-hist" onclick="setLabMuMode('hist')" title="Promedio historico simple (Markowitz clasico)">Markowitz clasico</button>
             <button class="table-ctrl-btn" id="lab-mode-bl" onclick="setLabMuMode('bl')" title="Equilibrio implicito + tus views, con shrinkage en la covarianza">Black-Litterman</button>
-            <span class="lab-status" id="lab-tau-wrap" style="display:none">Tau <input class="lab-control" id="lab-tau" type="number" min="0.005" max="1" step="0.005" value="0.05" onchange="setLabTau(this.value)" title="Incertidumbre del prior en Black-Litterman" style="width:64px" /></span>
           </div>
-          <div class="lab-status" id="lab-mu-hint"></div>
         </div>
 
         <div class="metric-grid" id="lab-metrics-row"></div>
@@ -2099,6 +2100,8 @@
               <input class="lab-control lab-add-input" id="lab-add-ticker" type="text" placeholder="AAPL, NVDA, AMZN" autocapitalize="characters" onkeydown="if(event.key==='Enter')addLabCandidateAssets()" />
               <button class="table-ctrl-btn" onclick="addLabCandidateAssets()" title="Agrega tickers al universo simulado">Agregar activo</button>
               <button class="table-ctrl-btn" onclick="clearLabCandidateAssets()" title="Quita los activos nuevos del escenario">Limpiar nuevos</button>
+              <button class="table-ctrl-btn" onclick="resetLabScenario()" title="Vuelve los pesos simulados a los pesos actuales">Restaurar pesos</button>
+              <button class="table-ctrl-btn" onclick="normalizeLabScenario()" title="Reescala los pesos simulados para que sumen exactamente 100%">Reescalar a 100%</button>
             </div>
             <div class="lab-table-fit"><table class="lab-scenario-table"><thead><tr><th>Activo</th><th>Tipo</th><th>Peso actual</th><th>Peso simulado</th><th>Mi view</th></tr></thead><tbody id="lab-scenario-body"></tbody></table></div>
           </div>
@@ -2110,37 +2113,12 @@
           </div>
         </div>
 
-        <div class="table-card">
-          <div class="table-header-row">
-            <span class="table-title">Escenarios guardados</span>
-            <span class="lab-status" id="lab-saved-count"></span>
-          </div>
-          <div class="lab-table-fit"><table class="lab-alts-table lab-saved-table"><thead><tr><th>Nombre</th><th>Guardado</th><th>CAGR</th><th>Vol</th><th>Sharpe</th><th></th></tr></thead><tbody id="lab-saved-body"></tbody></table></div>
-          <div class="lab-portfolio-view" id="lab-saved-detail"></div>
-        </div>
-
         <div class="lab-grid">
           <div class="chart-card">
             <div class="chart-title">Frontera eficiente</div>
             <div class="chart-sub" id="lab-frontier-sub">Puntos long-only con restricciones; retornos historicos</div>
             <canvas class="lab-canvas" id="lab-frontier" width="900" height="420"></canvas>
-            <div class="lab-legend"><span><i class="lab-legend-dot" style="background:#fb7185"></i>Actual</span><span><i class="lab-legend-dot" style="background:#f97316"></i>Simulado</span><span><i class="lab-legend-dot" style="background:#4ade80"></i>Min vol restr.</span><span><i class="lab-legend-dot" style="background:#a78bfa"></i>Max Sharpe restr.</span></div>
-          </div>
-          <div class="chart-card">
-            <div class="chart-title">Drawdown</div>
-            <div class="chart-sub">Caida pico-valle del portfolio actual y simulado</div>
-            <canvas class="lab-canvas" id="lab-drawdown" width="900" height="420"></canvas>
-            <div class="lab-legend"><span><i class="lab-legend-dot" style="background:#fb7185"></i>Actual</span><span><i class="lab-legend-dot" style="background:#f97316"></i>Simulado</span></div>
-          </div>
-        </div>
-
-        <div class="lab-grid">
-          <div class="table-card lab-corr-card">
-            <div class="table-header-row">
-              <span class="table-title">Matriz de correlaciones</span>
-              <span class="lab-status">retornos diarios alineados</span>
-            </div>
-            <div class="lab-table-fit"><table class="lab-corr-table" id="lab-corr-table"></table></div>
+            <div class="lab-legend"><span><i class="lab-legend-dot" style="background:#4ade80"></i>Actual</span><span><i class="lab-legend-dot" style="background:#f97316"></i>Simulado</span><span><i class="lab-legend-dot" style="background:#60a5fa"></i>Min vol restr.</span><span><i class="lab-legend-dot" style="background:#a78bfa"></i>Max Sharpe restr.</span></div>
           </div>
           <div class="table-card lab-compare-card">
             <div class="table-header-row">
@@ -2157,6 +2135,31 @@
             <div class="chart-title">Portfolio sugerido</div>
             <div class="chart-sub">Max Sharpe historico con restricciones activas</div>
             <div class="lab-suggested" id="lab-suggested"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Drawdown</div>
+            <div class="chart-sub">Caida pico-valle del portfolio actual y simulado</div>
+            <canvas class="lab-canvas" id="lab-drawdown" width="900" height="420"></canvas>
+            <div class="lab-legend"><span><i class="lab-legend-dot" style="background:#4ade80"></i>Actual</span><span><i class="lab-legend-dot" style="background:#f97316"></i>Simulado</span></div>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-header-row">
+            <span class="table-title">Escenarios guardados</span>
+            <span class="lab-status" id="lab-saved-count"></span>
+          </div>
+          <div class="lab-table-fit"><table class="lab-alts-table lab-saved-table"><thead><tr><th>Nombre</th><th>Guardado</th><th>CAGR</th><th>Vol</th><th>Sharpe</th><th></th></tr></thead><tbody id="lab-saved-body"></tbody></table></div>
+          <div class="lab-portfolio-view" id="lab-saved-detail"></div>
+        </div>
+
+        <div class="lab-grid">
+          <div class="table-card lab-corr-card">
+            <div class="table-header-row">
+              <span class="table-title">Matriz de correlaciones</span>
+              <span class="lab-status">retornos diarios alineados</span>
+            </div>
+            <div class="lab-table-fit"><table class="lab-corr-table" id="lab-corr-table"></table></div>
           </div>
           <div class="chart-card">
             <div class="chart-title">Contribucion al riesgo</div>
@@ -2348,7 +2351,7 @@ let API_URL='',portfolio=[],operaciones=[],historial=[],efectivo=[],fundamentale
 let compChart=null,tipoChart=null,evoChart=null;
 let activeFilter='Todos';
 let activeCurrency='ARS'; // 'ARS' o 'USD' — controla toda la UI de Resumen
-let labMarketData={},labScenario=[],labRange='2y',labRiskFreeRate=0.04,labLoading=false,labDataAttempted=false;
+let labMarketData={},labScenario=[],labRange='5y',labRiskFreeRate=0.04,labLoading=false,labDataAttempted=false;
 let labConstraints={maxAsset:0.35,maxSingle:0.25,maxEtf:0.35,maxCrypto:0.10,maxTop3:0.75,maxHhi:0.35,minSingle:0};
 let labSelectedPortfolio='maxSharpeConstrained';
 let labLastAnalytics=null;
@@ -3783,7 +3786,7 @@ function drawLabScatter(analytics){
   // El eje Y tiene que medir lo mismo que se uso para elegir "Sharpe restr.", si no el punto optimo
   // no cae sobre el borde visual de la nube. En BL se rankea por retorno del modelo (mu); en historico, por CAGR realizado.
   const yRet=analytics.muMode==='bl'?(p=>isFinite(p.ret)?p.ret:p.cagr):(p=>isFinite(p.cagr)?p.cagr:p.ret);
-  const special=[{...analytics.current,label:'Actual',color:'#fb7185'},{...analytics.sim,label:'Sim',color:'#f97316'},{...analytics.minVol,label:'Min Vol restr.',color:'#4ade80'},{...analytics.maxSharpeConstrained,label:'Sharpe restr.',color:'#a78bfa'}].filter(p=>p&&isFinite(p.vol)&&isFinite(yRet(p)));
+  const special=[{...analytics.current,label:'Actual',color:'#4ade80'},{...analytics.sim,label:'Sim',color:'#f97316'},{...analytics.minVol,label:'Min Vol restr.',color:'#60a5fa'},{...analytics.maxSharpeConstrained,label:'Sharpe restr.',color:'#a78bfa'}].filter(p=>p&&isFinite(p.vol)&&isFinite(yRet(p)));
   const xs=analytics.points.map(p=>p.vol).concat(special.map(p=>p.vol)),ys=analytics.points.map(yRet).concat(special.map(yRet));
   const xMinRaw=Math.min(...xs),xMaxRaw=Math.max(...xs),xPad=Math.max(0.015,(xMaxRaw-xMinRaw)*0.22);
   let xmin=Math.max(0,xMinRaw-xPad),xmax=xMaxRaw+xPad,ymin=Math.min(...ys)*1.1,ymax=Math.max(...ys)*1.1;if(ymin>0)ymin=0;
@@ -3822,7 +3825,7 @@ function drawLabDrawdown(analytics){
   const c=document.getElementById('lab-drawdown');if(!c)return;
   const {ctx,W,H}=labSetCanvasSize(c);ctx.clearRect(0,0,W,H);ctx.fillStyle='rgba(0,0,0,0.10)';ctx.fillRect(0,0,W,H);
   if(!analytics){ctx.fillStyle='#888';ctx.font='14px sans-serif';ctx.fillText(labAnalyticsIssue(),24,32);return;}
-  const series=[{label:'Actual',data:analytics.currentDD.series,color:'#fb7185'},{label:'Simulado',data:analytics.simDD.series,color:'#f97316'}];
+  const series=[{label:'Actual',data:analytics.currentDD.series,color:'#4ade80'},{label:'Simulado',data:analytics.simDD.series,color:'#f97316'}];
   const ymin=Math.min(...series.flatMap(s=>s.data),-0.01),ymax=0;
   const X=(i,n)=>52+i/Math.max(1,n-1)*(W-78),Y=y=>H-44-(y-ymin)/(ymax-ymin)*(H-72);
   ctx.strokeStyle='rgba(148,163,184,0.18)';
@@ -3900,7 +3903,7 @@ function renderLabConstraints(a){
     ['maxCrypto','Max crypto','BTC/ETH/cripto wrappers','pct',1],
     ['maxTop3','Max Top 3','peso maximo en las tres mayores','pct',1],
     ['minSingle','Min accion individual','evita acciones testimoniales','pct',0.5],
-    ['maxHhi','Max HHI','concentracion maxima permitida','dec',0.01]
+    ['maxHhi','Max HHI','suma de cada peso al cuadrado (Σwi²); 1/n = totalmente diversificado, 1 = un solo activo','dec',0.01]
   ];
   el.innerHTML=rows.map(([key,label,sub,kind,step])=>{
     const raw=labConstraints[key];
@@ -4016,8 +4019,6 @@ function renderPortfolioLab(){
   const a=labAnalytics();
   labLastAnalytics=a;
   updateLabMuModeUI();
-  const hint=document.getElementById('lab-mu-hint');
-  if(hint)hint.textContent=a?(a.muMode==='bl'?`Equilibrio (δ=${a.blDelta.toFixed(2)}) + ${a.activeViews.length} view(s), cov. shrinkeada (α=${a.shrinkAlpha.toFixed(2)})`:'Promedio historico simple, covarianza muestral cruda'):'';
   renderLabMetrics(a);renderLabScenario();renderLabConstraints(a);renderLabSuggested(a);renderLabQuality(a);renderLabRiskContrib(a);renderLabCorr(a);renderLabAlts(a);drawLabScatter(a);drawLabDrawdown(a);renderLabComments(a);renderLabSaved();
   const needsData=labScenario.some(s=>!labMarketData[s.ticker]||!Array.isArray(labMarketData[s.ticker].data)||labMarketData[s.ticker].data.length<LAB_MIN_OBS);
   if(needsData&&!labLoading&&!labDataAttempted)loadLabMarketData();
@@ -4070,10 +4071,12 @@ function setLabMuMode(mode){
 }
 function setLabTau(v){labTau=Math.max(0.005,Math.min(1,labParseNumber(v)||0.05));renderPortfolioLab();}
 function updateLabMuModeUI(){
-  const histBtn=document.getElementById('lab-mode-hist'),blBtn=document.getElementById('lab-mode-bl'),tauWrap=document.getElementById('lab-tau-wrap');
+  const histBtn=document.getElementById('lab-mode-hist'),blBtn=document.getElementById('lab-mode-bl'),tauWrap=document.getElementById('lab-tau-wrap'),tauInput=document.getElementById('lab-tau');
   if(histBtn)histBtn.classList.toggle('active',labMuMode==='hist');
   if(blBtn)blBtn.classList.toggle('active',labMuMode==='bl');
-  if(tauWrap)tauWrap.style.display=labMuMode==='bl'?'inline-flex':'none';
+  const tauDisplay=labMuMode==='bl'?'inline-block':'none';
+  if(tauWrap)tauWrap.style.display=tauDisplay;
+  if(tauInput)tauInput.style.display=tauDisplay;
 }
 function labSaveViews(){try{localStorage.setItem(LAB_VIEWS_STORE,JSON.stringify(labViews));}catch(e){}}
 function labViewCell(ticker){
