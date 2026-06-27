@@ -812,7 +812,7 @@
     position: relative;
   }
   .lab-select-btn {
-    width: 74px;
+    width: 78px;
     height: 38px;
     display: inline-flex;
     align-items: center;
@@ -878,7 +878,7 @@
     outline: none;
     box-shadow: 0 0 0 3px rgba(167,139,250,0.10);
   }
-  #lab-rf { width: 78px; text-align: center; }
+  #lab-rf, #lab-tau { width: 78px; text-align: center; }
   .lab-toolbar .table-ctrl-btn {
     min-height: 38px;
     padding: 8px 14px;
@@ -972,8 +972,8 @@
     font-family: 'DM Mono', monospace;
   }
   .lab-add-assets {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    display: flex;
+    flex-wrap: nowrap;
     gap: var(--space-2);
     align-items: center;
     padding: var(--space-3) var(--space-5);
@@ -982,9 +982,14 @@
   }
   .lab-add-input {
     min-width: 0;
+    width: 84px;
+    flex: 0 1 84px;
   }
   .lab-add-assets .table-ctrl-btn {
     min-height: 38px;
+    padding: 8px 10px;
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
   .lab-asset-cell {
     display: flex;
@@ -1070,7 +1075,8 @@
   }
   .lab-canvas {
     width: 100%;
-    height: 320px;
+    flex: 1 1 auto;
+    min-height: 240px;
     background: var(--bg-input);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -1374,7 +1380,8 @@
     .lab-canvas { height: 260px; }
     .lab-suggested-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .lab-constraints { grid-template-columns: 1fr; }
-    .lab-add-assets { grid-template-columns: 1fr; }
+    .lab-add-assets { flex-wrap: wrap; }
+    .lab-add-input { flex: 1 1 100%; width: auto; }
     .lab-portfolio-layout { grid-template-columns: 1fr; }
     .lab-pie { width: 132px; }
     .lab-pie-legend { grid-template-columns: 1fr; }
@@ -2060,6 +2067,14 @@
       <div id="lab-content">
         <div class="lab-toolbar">
           <div class="lab-toolbar-group">
+            <button class="table-ctrl-btn lab-mode-btn" id="lab-mode-hist" onclick="setLabMuMode('hist')" title="Promedio historico simple (Markowitz clasico)">Markowitz clasico</button>
+            <button class="table-ctrl-btn lab-mode-btn" id="lab-mode-bl" onclick="setLabMuMode('bl')" title="Equilibrio implicito + tus views, con shrinkage en la covarianza">Black-Litterman</button>
+          </div>
+          <div class="lab-status" id="lab-status">Listo</div>
+        </div>
+
+        <div class="lab-toolbar">
+          <div class="lab-toolbar-group">
             <span class="lab-status">Lookback</span>
             <div class="lab-select-wrap" id="lab-range-wrap">
               <button class="lab-select-btn" type="button" onclick="toggleLabRangeMenu()" aria-label="Seleccionar lookback"><span id="lab-range-label">5Y</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
@@ -2074,17 +2089,6 @@
             <input class="lab-control" id="lab-rf" type="number" min="0" max="100" step="0.1" value="4" onchange="setLabRiskFree(this.value)" title="Risk-free anual (%)" />
             <span class="lab-status" id="lab-tau-wrap" style="display:none">Tau</span>
             <input class="lab-control" id="lab-tau" style="display:none" type="number" min="0.005" max="1" step="0.005" value="0.05" onchange="setLabTau(this.value)" title="Incertidumbre del prior en Black-Litterman" />
-            <button class="table-ctrl-btn" onclick="refreshPortfolioLab()" title="Vuelve a descargar series historicas desde Yahoo via Apps Script">Recargar precios</button>
-            <button class="table-ctrl-btn" onclick="saveLabScenario()" title="Guarda los pesos y restricciones actuales para volver a verlos despues">Guardar escenario</button>
-          </div>
-          <div class="lab-status" id="lab-status">Listo</div>
-        </div>
-
-        <div class="lab-toolbar">
-          <div class="lab-toolbar-group">
-            <span class="lab-status">Retornos esperados</span>
-            <button class="table-ctrl-btn" id="lab-mode-hist" onclick="setLabMuMode('hist')" title="Promedio historico simple (Markowitz clasico)">Markowitz clasico</button>
-            <button class="table-ctrl-btn" id="lab-mode-bl" onclick="setLabMuMode('bl')" title="Equilibrio implicito + tus views, con shrinkage en la covarianza">Black-Litterman</button>
           </div>
         </div>
 
@@ -2097,11 +2101,12 @@
               <span class="lab-status" id="lab-scenario-total"></span>
             </div>
             <div class="lab-add-assets">
-              <input class="lab-control lab-add-input" id="lab-add-ticker" type="text" placeholder="AAPL, NVDA, AMZN" autocapitalize="characters" onkeydown="if(event.key==='Enter')addLabCandidateAssets()" />
-              <button class="table-ctrl-btn" onclick="addLabCandidateAssets()" title="Agrega tickers al universo simulado">Agregar activo</button>
-              <button class="table-ctrl-btn" onclick="clearLabCandidateAssets()" title="Quita los activos nuevos del escenario">Limpiar nuevos</button>
-              <button class="table-ctrl-btn" onclick="resetLabScenario()" title="Vuelve los pesos simulados a los pesos actuales">Restaurar pesos</button>
-              <button class="table-ctrl-btn" onclick="normalizeLabScenario()" title="Reescala los pesos simulados para que sumen exactamente 100%">Reescalar a 100%</button>
+              <input class="lab-control lab-add-input" id="lab-add-ticker" type="text" placeholder="AAPL, NVDA" autocapitalize="characters" onkeydown="if(event.key==='Enter')addLabCandidateAssets()" />
+              <button class="table-ctrl-btn" onclick="addLabCandidateAssets()" title="Agrega tickers al universo simulado">Agregar</button>
+              <button class="table-ctrl-btn" onclick="clearLabCandidateAssets()" title="Quita los activos nuevos del escenario">Limpiar</button>
+              <button class="table-ctrl-btn" onclick="resetLabScenario()" title="Vuelve los pesos simulados a los pesos actuales">Restaurar</button>
+              <button class="table-ctrl-btn" onclick="normalizeLabScenario()" title="Reescala los pesos simulados para que sumen exactamente 100%">Reescalar</button>
+              <button class="table-ctrl-btn" onclick="saveLabScenario()" title="Guarda los pesos y restricciones actuales para volver a verlos despues">Guardar</button>
             </div>
             <div class="lab-table-fit"><table class="lab-scenario-table"><thead><tr><th>Activo</th><th>Tipo</th><th>Peso actual</th><th>Peso simulado</th><th>Mi view</th></tr></thead><tbody id="lab-scenario-body"></tbody></table></div>
           </div>
@@ -2144,6 +2149,19 @@
           </div>
         </div>
 
+        <div class="lab-grid">
+          <div class="chart-card">
+            <div class="chart-title">Lectura FinPerso</div>
+            <div class="chart-sub">Diagnostico cuantitativo y trade-offs</div>
+            <div class="lab-note-list" id="lab-comments"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Calidad del optimizador</div>
+            <div class="chart-sub">Senales de robustez, concentracion y sobreajuste</div>
+            <div class="lab-note-list" id="lab-quality"></div>
+          </div>
+        </div>
+
         <div class="table-card">
           <div class="table-header-row">
             <span class="table-title">Escenarios guardados</span>
@@ -2165,19 +2183,6 @@
             <div class="chart-title">Contribucion al riesgo</div>
             <div class="chart-sub">Cuanto explica cada activo de la volatilidad total</div>
             <div class="lab-risk-list" id="lab-risk-contrib"></div>
-          </div>
-        </div>
-
-        <div class="lab-grid">
-          <div class="chart-card">
-            <div class="chart-title">Lectura FinPerso</div>
-            <div class="chart-sub">Diagnostico cuantitativo y trade-offs</div>
-            <div class="lab-note-list" id="lab-comments"></div>
-          </div>
-          <div class="chart-card">
-            <div class="chart-title">Calidad del optimizador</div>
-            <div class="chart-sub">Senales de robustez, concentracion y sobreajuste</div>
-            <div class="lab-note-list" id="lab-quality"></div>
           </div>
         </div>
       </div>
@@ -3789,8 +3794,11 @@ function drawLabScatter(analytics){
   const special=[{...analytics.current,label:'Actual',color:'#4ade80'},{...analytics.sim,label:'Sim',color:'#f97316'},{...analytics.minVol,label:'Min Vol restr.',color:'#60a5fa'},{...analytics.maxSharpeConstrained,label:'Sharpe restr.',color:'#a78bfa'}].filter(p=>p&&isFinite(p.vol)&&isFinite(yRet(p)));
   const xs=analytics.points.map(p=>p.vol).concat(special.map(p=>p.vol)),ys=analytics.points.map(yRet).concat(special.map(yRet));
   const xMinRaw=Math.min(...xs),xMaxRaw=Math.max(...xs),xPad=Math.max(0.015,(xMaxRaw-xMinRaw)*0.22);
-  let xmin=Math.max(0,xMinRaw-xPad),xmax=xMaxRaw+xPad,ymin=Math.min(...ys)*1.1,ymax=Math.max(...ys)*1.1;if(ymin>0)ymin=0;
+  let xmin=Math.max(0,xMinRaw-xPad),xmax=xMaxRaw+xPad;
+  const yMinRaw=Math.min(...ys),yMaxRaw=Math.max(...ys),yPad=Math.max(0.01,(yMaxRaw-yMinRaw)*0.28);
+  let ymin=yMinRaw-yPad,ymax=yMaxRaw+yPad;
   if(xmax-xmin<0.08){const mid=(xmax+xmin)/2;xmin=Math.max(0,mid-0.04);xmax=mid+0.04;}
+  if(ymax-ymin<0.04){const mid=(ymax+ymin)/2;ymin=mid-0.02;ymax=mid+0.02;}
   const X=x=>58+(x-xmin)/(xmax-xmin)*(W-92),Y=y=>H-46-(y-ymin)/(ymax-ymin)*(H-76);
   const riskBands=[
     {from:0,to:0.08,label:'Conservador',color:'rgba(34,197,94,0.035)'},
@@ -4040,7 +4048,7 @@ async function loadLabMarketData(){
     }));
     let ok=0;
     settled.forEach((res,i)=>{const ticker=rows[i].ticker;if(res.status==='fulfilled'&&!res.value.error){labMarketData[ticker]=res.value;ok++;}});
-    if(status)status.textContent=ok===rows.length?'Historicos cargados':'Historicos parciales '+ok+'/'+rows.length;
+    if(status)status.textContent=ok===rows.length?'Listo':'Historicos parciales '+ok+'/'+rows.length;
   }catch(e){if(status)status.textContent='MarketData no disponible';}
   labLoading=false;renderPortfolioLab();
 }
